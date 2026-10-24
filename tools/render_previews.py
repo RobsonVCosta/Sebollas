@@ -18,29 +18,31 @@ def scene_sprites():
     for half in range(2):
         for layer in range(3): s.append((104,128+half*16,META['car']+half*3+layer))
     s.append((104,160,META['dust']+2))
-    for x,y,direction,pose in [(84,48,0,0),(154,112,1,1)]:
-        start=META['cow']+(direction*2+pose)*8
+    for x,y,direction in [(84,24,0),(154,152,1)]:
+        start=META['cow']+direction*8
         for q in range(4):
             for layer in range(2): s.append((x+(q%2)*16,y+(q//2)*16,start+q*2+layer))
     for y in (24,88): s.append((104,y,META['bullet']))
     return s
 
-def render(style=0):
+def render(style=0, map_row=76, with_sprites=True):
     pixels=[0]*(256*192)
     tilemap=[32]*64
     for row in range(22):
-        start=((57+row)%64)*32
+        start=(map_row+row)*32
         tilemap.extend(WORLD[start:start+32])
     def text(row,col,s):
         for i,c in enumerate(s): tilemap[row*32+col+i]=ord(c)
-    text(0,1,'SCORE 00001200');text(0,22,'VIDAS 3')
+    text(0,1,'SCORE 00001200');text(0,25,chr(140)+' '+chr(140)+' '+chr(140))
+    text(1,1,'GAS '+chr(142)*7+chr(143)*3)
+    text(1,17,'VAVA - DESTINO')
     for ty in range(24):
         for tx in range(32):
             ch=tilemap[ty*32+tx]
             for y in range(8):
                 bits=PAT[ch*8+y]; color=COL[ch*8+y]
                 for x in range(8): pixels[(ty*8+y)*256+tx*8+x]=(color>>4) if bits&(128>>x) else color&15
-    sprites=scene_sprites()
+    sprites=scene_sprites() if with_sprites else []
     counts=[0]*192
     for x,y,n in sprites:
         for sy in range(max(0,y),min(192,y+16)): counts[sy]+=1

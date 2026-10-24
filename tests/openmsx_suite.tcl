@@ -15,7 +15,7 @@ proc expect {name actual expected} {
 proc prepare {} {
     keymatrixup 8 255
     keymatrixup 7 255
-    foreach {a v} {0xC000 1 0xC004 120 0xC005 128 0xC006 3 0xC007 0 0xC015 0 0xC018 64} {wr $a $v}
+    foreach {a v} {0xC000 1 0xC004 120 0xC005 128 0xC006 3 0xC007 0 0xC015 0 0xC018 64 0xC017 138 0xC04E 100 0xC04F 0 0xC050 0} {wr $a $v}
     for {set a 0xC008} {$a<0xC00C} {incr a} {wr $a 0}
     for {set a 0xC020} {$a<0xC038} {incr a} {wr $a 0}
 }
@@ -77,8 +77,15 @@ case one_life_per_collision CheckHits {cow 112 128} {
 case invulnerability CheckHits {cow 112 128; wr 0xC007 50} {
     expect lives [rd 0xC006] 3; expect invulnerability [rd 0xC007] 50
 }
-case third_hit_gameover CheckHits {cow 112 128; wr 0xC006 1} {
+case third_hit_gameover CheckHits {
+    cow 112 128; wr 0xC006 1
+    debug write VRAM 0x18AC 130
+} {
     expect state [rd 0xC000] 2; expect lives [rd 0xC006] 0
+    expect world_preserved [debug read VRAM 0x18AC] 130
+    expect centered_message [debug read_block VRAM [expr {0x1800+11*32+11}] 9] "GAME OVER"
+    expect last_heart_off [debug read VRAM 0x1819] 141
+    expect start_requires_release [rd 0xC01A] 0
 }
 case gameover_to_title MenuTick {wr 0xC000 2; wr 0xC01A 1; keymatrixdown 8 1} {
     expect state [rd 0xC000] 0; expect armed [rd 0xC01A] 0
@@ -121,11 +128,59 @@ case sprite_budget BuildSprites {
     bullet 120 128; wr 0xC034 1; wr 0xC035 120; wr 0xC036 96
 } {check_sat}
 case fixed_hud UpdateScroll {
-    wr 0xC016 15; wr 0xC017 0
+    wr 0xC016 15; wr 0xC017 80
     set ::oldhud [debug read_block VRAM 0x1800 64]
 } {
-    expect maprow [rd 0xC017] 63
+    expect maprow [rd 0xC017] 79
     expect hud [debug read_block VRAM 0x1800 64] $::oldhud
+}
+foreach lives {0 1 2 3} {
+    case hearts_$lives DrawHUD [list wr 0xC006 $lives] "
+        for {set i 0} {\$i<3} {incr i} {
+            expect heart_\$i \[debug read VRAM \[expr {0x1819+\$i*2}\]\] \[expr {\$i<$lives ? 140 : 141}\]
+        }
+    "
+}
+case gameover_no_play_blink MenuTick {
+    wr 0xC000 2; wr 0xC001 16
+    debug write VRAM 0x19CE 130
+} {expect no_play [debug read VRAM 0x19CE] 130}
+case cow_fixed_pose BuildSprites {cow 96 64; wr 0xC001 8} {
+    expect cow_pattern [rd [expr {0xC100+7*4+2}]] $::sym(COW_PATTERN)
+}
+case fuel_consumption UpdateJourney {wr 0xC04F 11} {
+    expect fuel [rd 0xC04E] 99; expect clock [rd 0xC04F] 0
+}
+case fuel_empty UpdateJourney {wr 0xC04E 1; wr 0xC04F 11} {expect state [rd 0xC000] 2}
+foreach station {54 110} {
+    case refuel_$station UpdateJourney "wr 0xC017 [expr {$station-17}]; wr 0xC004 168; wr 0xC04E 10" {
+        expect fuel [rd 0xC04E] 11; expect filling [rd 0xC050] 1
+    }
+}
+case no_refuel_on_road UpdateJourney {wr 0xC017 93; wr 0xC04E 10} {
+    expect fuel [rd 0xC04E] 10; expect filling [rd 0xC050] 0
+}
+case refuel_recovers_empty UpdateJourney {wr 0xC017 93; wr 0xC004 168; wr 0xC04E 0} {
+    expect fuel [rd 0xC04E] 1; expect state [rd 0xC000] 1
+}
+case tank_caps_at_100 UpdateJourney {wr 0xC017 93; wr 0xC004 168; wr 0xC04E 100} {
+    expect fuel [rd 0xC04E] 100; expect filling [rd 0xC050] 0
+}
+case filling_pauses_scroll UpdateScroll {wr 0xC050 1; wr 0xC016 15} {expect maprow [rd 0xC017] 138}
+case route_does_not_wrap UpdateScroll {wr 0xC017 0; wr 0xC016 15} {expect maprow [rd 0xC017] 0}
+case bridge_safe UpdateJourney {wr 0xC017 68} {expect lives [rd 0xC006] 3}
+case river_collision UpdateJourney {wr 0xC017 68; wr 0xC004 72} {
+    expect lives [rd 0xC006] 2; expect rescue_x [rd 0xC004] 120
+}
+case narrow_road_collision UpdateJourney {wr 0xC017 110; wr 0xC004 64} {expect lives [rd 0xC006] 2}
+case arrival UpdateJourney {wr 0xC017 0; wr 0xC005 80} {
+    expect state [rd 0xC000] 3
+    expect message [debug read_block VRAM [expr {0x1800+11*32+11}] 9] "CHEGAMOS!"
+}
+case destination_requires_driveway UpdateJourney {wr 0xC017 0} {expect state [rd 0xC000] 1}
+case arrival_to_title MenuTick {wr 0xC000 3; wr 0xC01A 1; keymatrixdown 8 1} {expect state [rd 0xC000] 0}
+case clean_title ShowMenu {} {
+    expect below_play [debug read_block VRAM [expr {0x1800+15*32}] [expr {9*32}]] [string repeat " " [expr {9*32}]]
 }
 after realtime 10 {
     set f [open /tmp/sebollas-timeout.txt w]

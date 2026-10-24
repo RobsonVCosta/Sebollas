@@ -25,6 +25,13 @@ ResetGame:
     ld (_mapRow),a
     ld (_tick),a
     ld (_nextDirection),a
+    ld (_fuelClock),a
+    ld (_refueling),a
+    ld a,138
+    ld (_mapRow),a
+    ld a,100
+    ld (_fuel),a
+    xor a
     ld hl,_cows
     ld de,_cows+1
     ld (hl),a
@@ -40,5 +47,9 @@ ResetGame:
     ld (hl),a
     ld a,1
     ld (_spawnClock),a
+    ld hl,NAMTBL
+    ld bc,64
+    ld a,32
+    call FILVRM
     call DrawWorld
     jp DrawHUD

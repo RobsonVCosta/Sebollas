@@ -90,6 +90,10 @@ MainLoop:
     jr MainLoop
 .play:
     call MovePlayer
+    call UpdateJourney
+    ld a,(_state)
+    cp 1
+    jr nz,MainLoop
     call UpdateBullets
     call UpdateScroll
     call UpdateCows
@@ -97,7 +101,9 @@ MainLoop:
     ld a,(_state)
     cp 1
     jr nz,MainLoop
-    call DrawHUD
+    ld a,(_tick)
+    and 3
+    call z,DrawHUD
     call BuildSprites
     call UploadSprites
     jr MainLoop
@@ -184,7 +190,7 @@ MenuTick:
     ld (_startArmed),a
     ld a,(_state)
     cp 2
-    jr z,.title
+    jr nc,.title
     call SoundStart
     jp ResetGame
 .title:
@@ -192,6 +198,9 @@ MenuTick:
     ld (_state),a
     jp ShowMenu
 .blink:
+    ld a,(_state)
+    cp 2
+    ret nc
     ld a,(_tick)
     and 15
     ret nz
@@ -218,25 +227,36 @@ ShowMenu:
     ld de,PlayText
     ld bc,0E0Eh
     call PutText
-    ld de,StartText
-    ld bc,1004h
-    call PutText
-    ld de,ControlsText
-    ld bc,1203h
-    call PutText
-    ld de,HelpText
-    ld bc,1403h
-    call PutText
     xor a
     ld (_startArmed),a
-    ld a,(_state)
-    cp 2
-    ret nz
+    ret
+
+ShowGameOver:
+    call DrawHUD
+    call HideSprites
+    ; Preserve the final world, with a centered three-row message panel.
+    ld hl,NAMTBL+10*32+10
+    ld b,3
+.panel:
+    push bc
+    push hl
+    ld bc,11
+    ld a,32
+    call FILVRM
+    pop hl
+    ld bc,32
+    add hl,bc
+    pop bc
+    djnz .panel
+    xor a
+    ld (_startArmed),a
     ld de,GameOverText
-    ld bc,0A0Bh
-    call PutText
-    ld de,_score
-    ld bc,0B0Ch
+    ld a,(_state)
+    cp 3
+    jr nz,.message
+    ld de,ArrivalText
+.message:
+    ld bc,0B0Bh
     jp PutText
 
 MovePlayer:
@@ -371,6 +391,12 @@ UpdateBullets:
     ret
 
 UpdateScroll:
+    ld a,(_refueling)
+    or a
+    ret nz
+    ld a,(_mapRow)
+    or a
+    ret z
     ld a,(_scrollClock)
     inc a
     and 15
@@ -378,7 +404,6 @@ UpdateScroll:
     ret nz
     ld a,(_mapRow)
     dec a
-    and 63
     ld (_mapRow),a
     ld ix,_cows
     call .moveCow
@@ -402,6 +427,23 @@ UpdateCows:
     call .walk
     ld ix,_cows+8
     call .walk
+    ; Cows cross land only, and stay clear of the destination courtyard.
+    ld a,(_mapRow)
+    cp 20
+    ret c
+    add a,3 ; spawn Y=40, world viewport starts at Y=16
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    ld de,WorldMap
+    add hl,de
+    ld a,(hl)
+    cp 145
+    ret z
     ld a,(_spawnClock)
     dec a
     ld (_spawnClock),a
@@ -510,15 +552,7 @@ CheckHits:
     add a,24
     cp 48
     ret nc
-    ld a,100
-    ld (_invulnerable),a
-    call SoundCrash
-    ld hl,_lives
-    dec (hl)
-    ret nz
-    ld a,2
-    ld (_state),a
-    jp ShowMenu
+    jp LoseLife
 .bullet:
     ld a,(iy+0)
     or a
@@ -563,15 +597,29 @@ DrawHUD:
     ld de,_score
     ld bc,0007h
     call PutText
-    ld de,LivesLabel
-    ld bc,0016h
-    call PutText
+    ld hl,NAMTBL+25
+    ld b,3
     ld a,(_lives)
-    add a,'0'
-    ld hl,NAMTBL+29
-    jp WRTVRM
+    ld c,a
+.hearts:
+    ld a,c
+    or a
+    ld a,141 ; extinguished heart
+    jr z,.heart
+    dec c
+    ld a,140 ; red heart
+.heart:
+    push bc
+    push hl
+    call WRTVRM
+    pop hl
+    pop bc
+    inc hl
+    inc hl
+    djnz .hearts
+    jp DrawFuel
 DrawWorld:
-    ; Keep two HUD rows fixed; copy only rows 2..23 from the circular map.
+    ; Keep two HUD rows fixed; copy only rows 2..23 from the finite route.
     ld a,(_mapRow)
     ld (_copyCount),a
     ld de,_screenBuffer+64
@@ -594,7 +642,6 @@ DrawWorld:
     ldir
     ld a,(_copyCount)
     inc a
-    and 63
     ld (_copyCount),a
     pop bc
     djnz .row
@@ -733,15 +780,8 @@ DrawCow:
     ld a,(ix+0)
     or a
     ret z
+    ; One fixed pose per direction, eight patterns per cow.
     ld a,(ix+3)
-    add a,a
-    ld b,a
-    ld a,(_tick)
-    rrca
-    rrca
-    rrca
-    and 1
-    add a,b
     add a,a
     add a,a
     add a,a
@@ -796,6 +836,7 @@ UploadSprites:
     ld bc,128
     jp LDIRVM
 
+    include route.asm
     include initRAM.asm
     include string.asm
     include math.asm
@@ -804,12 +845,12 @@ TitleText: db "SEBOLLAS",0
 SubtitleText: db "AVENTURA NA FAZENDA",0
 PlayText: db "PLAY",0
 BlankPlay: db "    ",0
-StartText: db "ESPACO OU ENTER PARA JOGAR",0
-ControlsText: db "SETAS MOVEM  ESPACO ATIRA",0
-HelpText: db "DESVIE E ESPANTE AS VACAS",0
 GameOverText: db "GAME OVER",0
+ArrivalText: db "CHEGAMOS!",0
+FuelLabel: db "GAS",0
+RouteLabel: db "VAVA - DESTINO",0
+RefuelLabel: db "ABASTECENDO   ",0
 ScoreLabel: db "SCORE",0
-LivesLabel: db "VIDAS",0
 MSX2Message: db "SEBOLLAS REQUER MSX2",13,10,0
 TenBCD: db 0,0,0,010h
 HundredBCD: db 0,0,1,0

@@ -1,6 +1,6 @@
 # Sebollas
 
-Jogo de estrada rural para **MSX2**, escrito em **Assembly Z80**. Dirija um Fusquinha amarelo por uma estrada de terra, desvie das vaquinhas que atravessam a pista e use os tiros para espantá-las até a margem.
+Jogo de estrada rural para **MSX2**, escrito em **Assembly Z80**. Saia da casa do Vavá e leve o Fusquinha amarelo até a casa de destino. A estrada de terra tem trechos estreitos, duas pontes sobre rios e dois postos de combustível. Desvie das vaquinhas e use os tiros para espantá-las até a margem.
 
 A ROM usa **SCREEN 4, 256 × 192 pixels**, gráficos em tiles, sprites coloridos sobrepostos e áudio PSG. A abertura e os textos reutilizam os desenhos da fonte do projeto original.
 
@@ -21,28 +21,32 @@ Também é possível carregar a ROM pela interface de outro emulador ou por um c
 | Controle | Ação |
 | --- | --- |
 | Espaço ou Enter, na abertura | Inicia `PLAY`. |
-| Setas | Move o Fusca em oito direções, limitado à estrada. |
+| Setas | Move o Fusca em oito direções, com limites laterais da área de jogo. |
 | Espaço, na partida | Dispara; pode ser mantido pressionado. |
-| Espaço ou Enter, em GAME OVER | Retorna à abertura. Solte a tecla antes de iniciar novamente. |
+| Espaço ou Enter, em GAME OVER ou na chegada | Retorna à abertura. Solte a tecla antes de iniciar novamente. |
 
 O jogo lê o teclado pela BIOS. Joystick físico não está selecionado nesta versão.
 
 ### Regras
 
-- O jogador começa com **três vidas**.
+- O percurso é finito: parte da casa `VAVA` e termina na casa `DESTINO`. Ao final, avance até o acesso central da casa para ver `CHEGAMOS!`.
+- A estrada se estreita antes das pontes. Sair da pista, atingir a margem ou entrar no rio custa uma vida e recoloca o carro no centro da estrada.
+- O tanque começa cheio, com **100 unidades**, e gasta uma unidade a cada 12 ticks (cerca de 24 segundos por tanque). Tanque vazio encerra a partida.
+- Existem **dois postos**, com bombas vermelhas e placas `POSTO`, à direita da estrada. Encoste no piso cinza junto às bombas para abastecer automaticamente; a rolagem pausa enquanto o tanque enche. A barra `GAS` fica vermelha abaixo de 21 unidades.
+- O jogador começa com **três corações vermelhos**, que se apagam a cada batida.
 - Cada batida retira uma vida e concede **dois segundos de invulnerabilidade**, com o carro piscando.
-- A terceira batida abre a tela `GAME OVER`, com a pontuação final.
-- Um tiro espanta a vaca, que passa a caminhar com o dobro da velocidade horizontal. Não há animação de ferimento.
+- A terceira batida mostra `GAME OVER` no centro do cenário da partida, mantendo a pontuação final no HUD.
+- Um tiro espanta a vaca, que passa a caminhar com o dobro da velocidade horizontal. A vaca usa uma pose fixa, espelhada conforme a direção, sem animação ao andar.
 - Cada vaca espantada vale **100 pontos**, concedidos uma única vez.
 - Uma vaca que conclui a travessia sem ser atingida vale **10 pontos**.
 - Existem no máximo duas vacas e dois tiros ativos. A dificuldade é fixa.
-- As duas linhas superiores mostram a pontuação de oito dígitos e as vidas; somente o cenário abaixo delas rola.
+- As duas linhas superiores mostram a pontuação de oito dígitos, as vidas, o combustível e o trajeto; somente o cenário abaixo delas rola.
 
 ## Abertura
 
 ![Abertura com a fonte original](previews/abertura-openmsx-4x.png)
 
-`PLAY` pisca na abertura. A transição exige que Espaço/Enter tenham sido soltos antes de um novo pressionamento, evitando reinícios e disparos involuntários.
+`PLAY` pisca na abertura. Abaixo dele não há instruções nem outros textos. A transição exige que Espaço/Enter tenham sido soltos antes de um novo pressionamento, evitando reinícios e disparos involuntários.
 
 ## Três prévias
 
@@ -104,6 +108,7 @@ make captures         # capturas reais de abertura, jogo e GAME OVER
 | Arquivo ou pasta | Responsabilidade |
 | --- | --- |
 | `Sebollas.asm` | Cabeçalho, configuração do vídeo, estados, controles, tiros, vacas, colisões, cenário e composição dos sprites. |
+| `route.asm` | Combustível, abastecimento, colisão com terreno, chegada e barra do tanque. |
 | `bios.asm` | Endereços da BIOS e das tabelas de SCREEN 4. |
 | `ram_vars.asm` / `initRAM.asm` | Mapa e inicialização explícita da RAM e reinício da partida. |
 | `string.asm` | Impressão por coordenadas, conversão BCD e desenhos originais da fonte. |
@@ -119,18 +124,18 @@ make captures         # capturas reais de abertura, jogo e GAME OVER
 
 ## Limites gráficos e implementação
 
-O cenário usa tiles de 8 × 8, com dois índices de cor por linha de oito pixels. O mapa tem 64 linhas circulares; a janela de 22 linhas avança oito pixels a cada 16 ticks. Os bancos gráficos recebem a mesma fonte e os mesmos tiles, permitindo imprimir nas três regiões verticais.
+O cenário usa tiles de 8 × 8, com dois índices de cor por linha de oito pixels. O mapa tem 160 linhas, com início na linha 138 e fim na linha 0, sem repetição; a janela de 22 linhas avança oito pixels a cada 16 ticks. O percurso leva cerca de 45 segundos, mais o tempo de abastecimento e de aproximação final. Os bancos gráficos recebem a mesma fonte e os mesmos tiles, permitindo imprimir nas três regiões verticais.
 
 | Elemento | Composição |
 | --- | --- |
 | Fusca 16 × 32 | Seis sprites: três camadas em cada metade de 16 × 16. |
-| Vaca 32 × 32 | Oito sprites: duas camadas por quadrante, com cores por linha para corpo e focinho. Duas poses, nos dois sentidos. |
+| Vaca 32 × 32 | Oito sprites: duas camadas por quadrante, com cores por linha para corpo e focinho. Uma pose fixa, nos dois sentidos. |
 | Poeira | Um sprite de 16 × 16, com quatro quadros, colocado logo após a traseira. |
 | Cada tiro | Um sprite de 16 × 16, com desenho visível de 2 × 5 pixels. |
 
 As vacas ficam separadas verticalmente por pelo menos 48 pixels e os tiros por pelo menos 16 pixels. Carro e poeira não compartilham linhas. Assim, o pior caso usa quatro entradas de uma vaca, três do carro e uma de tiro: **oito sprites por linha**, sem alternância de camadas por excesso. A piscada de invulnerabilidade é intencional.
 
-A capacidade máxima é de **25 entradas de sprite** e **43 padrões de 16 × 16**. A RAM de trabalho fica em `0xC000–0xC6FF`; os atributos e cores são preparados em RAM antes do envio à VRAM.
+A capacidade máxima é de **25 entradas de sprite** e **27 padrões de 16 × 16**. A RAM de trabalho fica em `0xC000–0xC6FF`; os atributos e cores são preparados em RAM antes do envio à VRAM.
 
 | VRAM | Uso |
 | --- | --- |
@@ -146,13 +151,14 @@ A lógica roda a 50 ticks por segundo. Em vídeo de 60 Hz, um de cada seis VBlan
 ## Verificação realizada
 
 - Montagem sem erros ou avisos; cartucho de 16 KiB.
-- **Seis testes Python**: fonte original, paletas, endereços de VRAM, máscaras, poses, ROM e limite de sprites.
-- **40 casos de rotinas Z80 em cada frequência**, no openMSX 17.0 com C-BIOS MSX2 de 50 e 60 Hz: oito direções, bordas, tiros, vacas, pontuação BCD, três vidas, invulnerabilidade, menu e áudio.
+- **Sete testes Python**: fonte original, paletas, endereços de VRAM, máscaras, direções da vaca, percurso e pontos de interesse, ROM e limite de sprites.
+- **62 casos de rotinas Z80 em cada frequência**, no openMSX 17.0 com C-BIOS MSX2 de 50 e 60 Hz: oito direções, bordas, tiros, vacas, pontuação BCD, três vidas, invulnerabilidade, menu, áudio, combustível, postos, pontes, terreno e chegada.
 - Dois testes contínuos de aproximadamente 30 segundos, com direção e tiros: **zero quadros com excesso de sprites**, máximo observado de oito por linha.
-- Capturas reais de [abertura](previews/abertura-openmsx.png), [gameplay](previews/gameplay-openmsx.png) e [GAME OVER](previews/gameover-openmsx.png).
+- Duas viagens completas, em 50 e 60 Hz, com direção pelas teclas e abastecimento nos dois postos, chegando ao destino com combustível. O teste isola a viagem das batidas com vacas.
+- Capturas reais de [abertura](previews/abertura-openmsx.png), [gameplay](previews/gameplay-openmsx.png) e [GAME OVER](previews/gameover-openmsx.png), além de [ponte](previews/ponte-openmsx.png), [posto](previews/posto-openmsx.png) e [chegada](previews/chegada-openmsx.png).
 - Comparação da VRAM capturada com os padrões, cores, paleta e fonte empacotados na ROM.
 
-Os relatórios locais são gerados em `resources/generated/emulator-50.txt`, `emulator-60.txt`, `stress-50.txt` e `stress-60.txt`. O teste de áudio verifica os registradores e o desligamento dos canais; não houve avaliação auditiva ou teste em hardware físico.
+Os relatórios locais são gerados em `resources/generated/emulator-50.txt`, `emulator-60.txt`, `stress-50.txt`, `stress-60.txt`, `route-50.txt` e `route-60.txt`. O teste de áudio verifica os registradores e o desligamento dos canais; não houve avaliação auditiva ou teste em hardware físico.
 
 Neste ambiente, o openMSX precisa ser executado fora do sandbox para iniciar corretamente. Esse requisito é do ambiente de desenvolvimento, não da ROM.
 

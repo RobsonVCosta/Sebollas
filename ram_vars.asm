@@ -1,5 +1,5 @@
 ; Sebollas: all mutable state is explicitly initialized in C000-C6FF.
-_state          equ 0C000h ; 0 title, 1 playing, 2 game over
+_state          equ 0C000h ; 0 title, 1 playing, 2 game over, 3 arrived
 _tick           equ 0C001h
 _framePhase     equ 0C002h
 _is60Hz         equ 0C003h
@@ -28,6 +28,10 @@ _drawX          equ 0C047h
 _drawY          equ 0C048h
 _copyCount      equ 0C049h
 _Print          equ 0C04Ah ; x,y,string pointer
+_fuel           equ 0C04Eh ; 0..100
+_fuelClock      equ 0C04Fh ; one unit per 12 game ticks
+_refueling      equ 0C050h ; freezes scrolling while tank fills
+_terrainRow     equ 0C051h
 _satBuffer      equ 0C100h ; 128 bytes
 _colorBuffer    equ 0C180h ; 512 bytes
 _screenBuffer   equ 0C400h ; 768 bytes

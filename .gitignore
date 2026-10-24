@@ -5,3 +5,4 @@ __pycache__/
 /resources/generated/stress-*.txt
 /resources/generated/capture*.bin
 /resources/generated/capture.txt
+/resources/generated/route-*.txt

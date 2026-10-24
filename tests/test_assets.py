@@ -11,13 +11,26 @@ class Assets(unittest.TestCase):
         old=(ROOT/'resources/font-original.bin').read_bytes()
         for i,ch in enumerate(a.META['font_chars']):
             self.assertEqual(a.PAT[ch*8:ch*8+8],old[i*8:i*8+8])
-        self.assertTrue(all(128<=x<=138 for x in a.WORLD))
+        self.assertTrue(all(x in a.META["font_chars"] or 128<=x<=158 for x in a.WORLD))
+    def test_route_landmarks_and_safe_center(self):
+        rows=[a.WORLD[y*32:(y+1)*32] for y in range(160)]
+        self.assertEqual(bytes(rows[147][1:5]),b'VAVA')
+        self.assertEqual(bytes(rows[1][13:20]),b'DESTINO')
+        for row in rows[7:158]:
+            self.assertIn(row[15],(130,131,146,157))
+        for y in (54,110):
+            self.assertEqual(bytes(rows[y-3][24:29]),b'POSTO')
+            self.assertEqual(rows[y][22],157)
+        for y in (36,86):
+            self.assertEqual(rows[y][0],145)
+            self.assertEqual(rows[y][15],146)
+            self.assertEqual(sum(t==146 for t in rows[y]),6)
     def test_palette_and_table_bounds(self):
         self.assertEqual(len(a.PAT),2048)
         self.assertEqual(len(a.COL),2048)
         self.assertLessEqual(len(a.SPR),2048)
         self.assertEqual(len(a.SPR)//32,len(a.SCOL)//16)
-        self.assertEqual(len(a.WORLD),64*32)
+        self.assertEqual(len(a.WORLD),160*32)
         for pal in a.META['palettes']:
             self.assertEqual(len(pal),16)
             self.assertTrue(all(0<=c<=7 for rgb in pal for c in rgb))
@@ -29,11 +42,10 @@ class Assets(unittest.TestCase):
             layers=[a.SPR[(half*3+i)*32:(half*3+i+1)*32] for i in range(3)]
             for masks in zip(*layers):
                 self.assertEqual(sum(x.bit_count() for x in masks), (masks[0]|masks[1]|masks[2]).bit_count())
-    def test_cow_pose_and_direction(self):
+    def test_cow_static_directions(self):
         start=a.META['cow']*32
-        poses=[a.SPR[start+i*256:start+(i+1)*256] for i in range(4)]
+        poses=[a.SPR[start+i*256:start+(i+1)*256] for i in range(2)]
         self.assertNotEqual(poses[0],poses[1])
-        self.assertNotEqual(poses[0],poses[2])
         self.assertIn(9,a.SCOL) # pink muzzle is an actual hardware color
     def test_maximum_scanline_budget(self):
         # Two 32-high cows separated by >=48 cannot share a line: <=4 sprites.
