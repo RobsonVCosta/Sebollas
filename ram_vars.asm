@@ -1,57 +1,34 @@
-;-------------------------------------------
-; ram_vars.asm
-; Variáveis que residem em RAM
-;-------------------------------------------
-		
-_shiftTileCount = 0C000h ; endereço absoluto em RAM
-_shiftTile = _shiftTileCount + 1
-
-
-;andamento
-_music_time = _shiftTile + 2
-
-;_NoteWaitList----------------------
-;18 bytes, 6 bytes for each channel A, B, C
-;Channel A
-;2 bytes for time_finish
-;2 bytes for music address
-;2 bytes for music player position
-;Channel B
-;2 bytes for time_finish 
-;2 bytes for  music address
-;2 bytes for music player position
-;Channel C
-;2 bytes for time_finish 
-;2 bytes for  music address
-;2 bytes for music player position
-_noteWaitList = _music_time + 1
-
-
-
-_sprite_fuscaFront_attr = _noteWaitList + 18
-_sprite_fuscaBack_attr = _sprite_fuscaFront_attr + 6
-_sprite_2_attr = _sprite_fuscaBack_attr + 6
-_sprite_3_attr = _sprite_2_attr + 6
-_sprite_4_attr = _sprite_3_attr + 6
-
-_score = _sprite_4_attr + 6	
-
-_scoreBCD_8Digits = _score + 9
-_somarBCD_8D = _scoreBCD_8Digits + 4 
-
-		
-;_sprite_1_attr: db 130, 100, 0, BLACK, 0   ;y, x, nPtrn, Color	, status: (0 enable, 1 disable)
-;_sprite_2_attr: db 130, 100, 4, WHITE, 0, DELAY_BULLETS ;y, x, nPtrn, Color, status: (0 enable, 1 disable) , delay entre o proximo bullet
-;_sprite_3_attr: db 130, 100, 4, RED, 0, DELAY_BULLETS
-
-_currentKeys = _somarBCD_8D + 4
-_previousKeys = _currentKeys + 12
-
-_Print = _previousKeys + 12
-;_Print:	ds 4 			; [db x][db y][dw msg]
-; db 1         ; x
-;db 1         ; y
-; dw msg       ; ponteiro (little-endian: low, high)
-
-
-
+; Sebollas: all mutable state is explicitly initialized in C000-C6FF.
+_state          equ 0C000h ; 0 title, 1 playing, 2 game over
+_tick           equ 0C001h
+_framePhase     equ 0C002h
+_is60Hz         equ 0C003h
+_carX           equ 0C004h
+_carY           equ 0C005h
+_lives          equ 0C006h
+_invulnerable   equ 0C007h
+_scoreBCD_8Digits equ 0C008h
+_score          equ 0C00Ch ; eight ASCII digits and terminator
+_fireWait       equ 0C015h
+_scrollClock    equ 0C016h
+_mapRow         equ 0C017h
+_spawnClock     equ 0C018h
+_nextDirection  equ 0C019h
+_startArmed     equ 0C01Ah
+_menuDirty      equ 0C01Bh
+_effectTime     equ 0C01Ch ; three channel countdowns
+_cows           equ 0C020h ; two records: active,x,y,direction,scared (8 byte stride)
+_bullets        equ 0C030h ; two records: active,x,y (4 byte stride)
+_spriteCount    equ 0C040h
+_satPtr         equ 0C041h
+_colorPtr       equ 0C043h
+_direction      equ 0C045h
+_spriteBase     equ 0C046h
+_drawX          equ 0C047h
+_drawY          equ 0C048h
+_copyCount      equ 0C049h
+_Print          equ 0C04Ah ; x,y,string pointer
+_satBuffer      equ 0C100h ; 128 bytes
+_colorBuffer    equ 0C180h ; 512 bytes
+_screenBuffer   equ 0C400h ; 768 bytes
+RAM_END         equ 0C700h

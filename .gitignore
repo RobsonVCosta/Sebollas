@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+/resources/generated/*.sym
+/resources/generated/emulator-*.txt
+/resources/generated/stress-*.txt
+/resources/generated/capture*.bin
+/resources/generated/capture.txt
