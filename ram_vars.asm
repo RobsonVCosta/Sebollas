@@ -1,5 +1,5 @@
 ; Sebollas: all mutable state is explicitly initialized in C000-C6FF.
-_state          equ 0C000h ; 0 title, 1 road, 2 game over, 3 stage card, 4 boss, 5 ending, 6 credits, 7 bonus count
+_state          equ 0C000h ; 0 title, 1 road, 2 game over, 3 stage card, 4 boss, 5 ending, 6 credits, 7 bonus, 8/9 ending art
 _tick           equ 0C001h
 _framePhase     equ 0C002h
 _is60Hz         equ 0C003h
@@ -18,7 +18,7 @@ _startArmed     equ 0C01Ah
 _menuDirty      equ 0C01Bh
 _effectTime     equ 0C01Ch ; three channel countdowns
 _cows           equ 0C020h ; two records: active,x,y,exitDirection,leaving (8 byte stride)
-_reserved30     equ 0C030h ; former projectile records, kept as unused RAM
+_reserved30     equ 0C030h ; third cow record in stage 3
 _spriteCount    equ 0C040h
 _satPtr         equ 0C041h
 _colorPtr       equ 0C043h
@@ -71,6 +71,14 @@ _bonusClock     equ 0C084h
 _bonusDone      equ 0C085h
 _bonusSoundStep equ 0C086h
 _fuelAlertPitch equ 0C087h
+_creditDest     equ 0C088h ; next VRAM cell; zero begins a new line
+_creditClock    equ 0C08Ah
+_roadMinX       equ 0C08Bh
+_roadMaxX       equ 0C08Ch
+_roadRow        equ 0C08Dh
+_roadRows       equ 0C08Eh
+_cowSerial      equ 0C08Fh
+_bossDefeat     equ 0C090h ; 0 fight, 1 blinking, 2 escaping
 _satBuffer      equ 0C100h ; 128 bytes
 _colorBuffer    equ 0C180h ; 512 bytes
 _screenBuffer   equ 0C400h ; 768 bytes

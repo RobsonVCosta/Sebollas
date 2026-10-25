@@ -26,6 +26,9 @@ proc current_score {} {
     scan [binary encode hex [debug read_block memory 0xC008 4]] %d value
     return $value
 }
+set art_ticks [dict create 8 0 9 0]
+set art_order {}
+set road_errors 0
 set saw_ending false
 set finished false
 set samples 0
@@ -51,6 +54,14 @@ proc campaign_drive {} {
         if {$peak>8} {incr ::overflow}
     }
     if {$state==1} {
+        set x [debug read memory 0xC004]
+        set y [debug read memory 0xC005]
+        set maprow [debug read memory 0xC017]
+        for {set r [expr {$maprow+$y/8-2}]} {$r<=$maprow+($y+31)/8-2} {incr r} {
+            for {set col [expr {$x/8}]} {$col<=($x+15)/8} {incr col} {
+                if {[debug read memory [expr {$::sym(WorldMap)+$r*32+$col}]] ni {130 131 146 157}} {incr ::road_errors}
+            }
+        }
         set stage [debug read memory 0xC060]
         dict set ::visited $stage 1
         if {$stage!=$::previous_stage} {set ::last_active {0 0}; set ::previous_stage $stage}
@@ -105,16 +116,21 @@ proc campaign_drive {} {
     } elseif {$state==5} {
         set ::saw_ending true
         if {$::previous_hp>0} {incr ::boss_hits $::previous_hp; set ::previous_hp 0}
-    } elseif {$state==6} {set ::finished true}
+    } elseif {$state==8 || $state==9} {
+        dict incr ::art_ticks $state
+        if {[lsearch -exact $::art_order $state]<0} {lappend ::art_order $state}
+    } elseif {$state==6} {
+        if {[debug read_block VRAM [expr {0x1800+14*32+7}] 17] eq "By Robson Velloso"} {set ::finished true}
+    }
 }
 after time 6 {keymatrixdown 8 1}
 after time 6.1 {keymatrixup 8 1; debug set_bp $::sym(MainLoop.tick) {} {campaign_drive}}
 after time 150 {
     set state [debug read memory 0xC000]
     set hz [expr {[debug read memory 0xC003] ? 60 : 50}]
-    set ok [expr {$::finished && $state==6 && [dict size $::visited]==3 && [dict size $::stops]==6 && $::boss_hits==12 && $::saw_ending && $::overflow==0 && [dict size $::bonus_stages]==3 && $::bonus_converted>0 && $::bonus_errors==0}]
+    set ok [expr {$::finished && $state==6 && [dict size $::visited]==3 && [dict size $::stops]==6 && $::boss_hits==12 && $::saw_ending && $::overflow==0 && [dict size $::bonus_stages]==3 && $::bonus_converted>0 && $::bonus_errors==0 && $::road_errors==0 && $::art_order eq {8 9} && [dict get $::art_ticks 8]==250 && [dict get $::art_ticks 9]==250}]
     set f [open "resources/generated/campaign-$hz.txt" w]
-    puts $f "[expr {$ok ? {PASS} : {FAIL}}] campaign: state=$state; stages=[dict size $::visited]; stations=[dict size $::stops]; boss hits=$::boss_hits; ending=$::saw_ending; cows=$::cow_counts; bonus stages=[dict size $::bonus_stages]; cheeses converted=$::bonus_converted; bonus errors=$::bonus_errors; max sprites=$::worst; overflow=$::overflow; lives=[debug read memory 0xC006]"
+    puts $f "[expr {$ok ? {PASS} : {FAIL}}] campaign: state=$state; stages=[dict size $::visited]; stations=[dict size $::stops]; boss hits=$::boss_hits; ending=$::saw_ending; road errors=$::road_errors; art ticks=$::art_ticks; cows=$::cow_counts; bonus stages=[dict size $::bonus_stages]; cheeses converted=$::bonus_converted; bonus errors=$::bonus_errors; max sprites=$::worst; overflow=$::overflow; lives=[debug read memory 0xC006]"
     close $f
     exit
 }

@@ -19,6 +19,7 @@ PALETTES=[
 for pal in PALETTES:
     pal[13]=pal[6]
     pal[6]=(0,0,0)
+    pal[10]=(7,6,1) # the cheese keeps the same yellow in every stage
 def image(w,h,color=0): return Image.new('P',(w,h),color)
 patterns=bytearray(2048); colors=bytearray([0xf1]*2048)
 font=(ROOT/'resources/font-original.bin').read_bytes()
@@ -64,7 +65,7 @@ extras={40:[0x0e,0x18,0x30,0x30,0x30,0x18,0x0e,0],
 244:[0x3e,0x63,0x60,0x60,0x63,0x3e,0x0c,0x18]}
 for ch,rows in extras.items(): patterns[ch*8:ch*8+8]=bytes(rows)
 CREDIT_PARAGRAPHS=[
-'Essa foi a aventura de Argon, Gordinho (Leto) e Robson em sua jornada de Nova Iguaçu até o Sebollas.',
+'Essa foi a aventura de Argon, Gordinho (Leto) e Robson em sua jornada de Nova Iguaçu até Sebollas.',
 'Obrigado amigos, pelas boas memórias.',
 'By Robson Velloso']
 credit_rows=[]; row=4
@@ -148,53 +149,70 @@ for q in range(32):
 (OUT/'colors.bin').write_bytes(colors)
 # Finite northbound route. The viewport starts at row 138 and ends at row 0.
 WORLD_ROWS=160
-world=[]
-centers=[]
-for y in range(WORLD_ROWS):
-    shift=round(4*math.sin(y*math.pi/40))
-    left,right=10+shift,21+shift
-    for lo,hi in ((28,47),(78,97)):
-        if lo<=y<=hi:
-            inset=min(5,y-lo+1,hi-y+1)
-            left,right=8+shift+inset,23+shift-inset
-    if 123<=y<=132: left,right=11+shift,20+shift
-    centers.append(((left+right)//2)*8)
-    river=33<=y<=40 or 83<=y<=90
-    row=[]
-    for x in range(32):
-        t=128 if (x*7+y*3)%5 else 129
-        if river:
-            t=146 if left<=x<=right else 147 if x in (left-1,right+1) else 145
-        elif left<=x<=right: t=131 if x in (left+3,right-3) else 130
-        elif x==left-1: t=132
-        elif x==right+1: t=133
-        elif x in (left-3,right+3): t=134
-        elif x in (2,29) and y%8 in (0,1): t=135 if y%8==0 else 137
-        elif x in (1,3,28,30) and y%8==0: t=136
-        elif (x+y*5)%37==0: t=138
-        row.append(t)
-    world.append(row)
-def label(y,x,text): world[y][x:x+len(text)]=map(ord,text)
-def house(y,x,name):
-    label(y-1,x,name)
-    world[y][x:x+6]=[148,149,149,149,149,150]
-    world[y+1][x:x+6]=[149]*6
-    world[y+2][x:x+6]=[151,152,151,151,152,151]
-    world[y+3][x:x+6]=[151,151,153,153,151,151]
-    world[y+4][x:x+6]=[151,151,153,153,151,151]
-# Vava's home is beside the initial car; the destination faces its driveway.
-for y in range(150,157): world[y][3:16]=[157]*13
-house(148,1,'VAVÁ')
-for y in range(7,19): world[y][13:19]=[157]*6
-house(2,13,'DESTINO')
-for y in (54,110):
-    for yy in range(y-2,y+8): world[yy][min(centers[yy]//8+4,21):28]=[157]*(28-min(centers[yy]//8+4,21))
-    label(y-3,24,'POSTO')
-    world[y][25:27]=[154,156]
-    world[y+1][25:27]=[155,156]
-    world[y+2][25:27]=[158,128]
-(OUT/'road_centers.bin').write_bytes(bytes(centers))
-(OUT/'world.bin').write_bytes(bytes(t for row in world for t in row))
+def make_route(stage):
+    suffix='' if stage==2 else str(stage)
+    world=[]
+    centers=[]
+    for y in range(WORLD_ROWS):
+        shift=0 if stage==1 else round(4*math.sin(y*math.pi/40))
+        left,right=10+shift,21+shift
+        for lo,hi in (() if stage!=2 else ((28,47),(78,97))):
+            if lo<=y<=hi:
+                inset=min(5,y-lo+1,hi-y+1)
+                left,right=8+shift+inset,23+shift-inset
+        if stage==2 and 123<=y<=132: left,right=11+shift,20+shift
+        if stage==3: left,right=12+shift,19+shift
+        centers.append(((left+right)//2)*8)
+        river=stage!=1 and (33<=y<=40 or 83<=y<=90)
+        row=[]
+        for x in range(32):
+            t=128 if (x*7+y*3)%5 else 129
+            if river:
+                t=146 if left<=x<=right else 147 if x in (left-1,right+1) else 145
+            elif left<=x<=right: t=131 if x in (left+3,right-3) else 130
+            elif x==left-1: t=132
+            elif x==right+1: t=133
+            elif x in (left-3,right+3): t=134
+            elif x in (2,29) and y%8 in (0,1): t=135 if y%8==0 else 137
+            elif x in (1,3,28,30) and y%8==0: t=136
+            elif (x+y*5)%37==0: t=138
+            row.append(t)
+        world.append(row)
+    def label(y,x,text): world[y][x:x+len(text)]=map(ord,text)
+    def house(y,x,name):
+        label(y-1,x,name)
+        world[y][x:x+6]=[148,149,149,149,149,150]
+        world[y+1][x:x+6]=[149]*6
+        world[y+2][x:x+6]=[151,152,151,151,152,151]
+        world[y+3][x:x+6]=[151,151,153,153,151,151]
+        world[y+4][x:x+6]=[151,151,153,153,151,151]
+    # Vava's home is beside the initial car; the destination faces its driveway.
+    for y in range(150,157): world[y][3:16]=[157]*13
+    house(148,1,'VAVÁ')
+    for y in range(7,19): world[y][13:19]=[157]*6
+    house(2,13,'DESTINO')
+    for y in (54,110):
+        for yy in range(y-2,y+8): world[yy][min(centers[yy]//8+4,21):28]=[157]*(28-min(centers[yy]//8+4,21))
+        label(y-3,24,'POSTO')
+        world[y][25:27]=[154,156]
+        world[y+1][25:27]=[155,156]
+        world[y+2][25:27]=[158,128]
+    (OUT/f'road_centers{suffix}.bin').write_bytes(bytes(centers))
+    # Drivable limits for the complete 16px-wide car; include station forecourts.
+    road_bounds=[]
+    for y,row in enumerate(world):
+        columns=[x for x,t in enumerate(row) if t in (130,131,146,157)]
+        middle=min(columns,key=lambda x:abs(x-centers[y]//8))
+        left=right=middle
+        while left>0 and row[left-1] in (130,131,146,157): left-=1
+        while right<31 and row[right+1] in (130,131,146,157): right+=1
+        road_bounds.extend((left*8,right*8-8))
+    (OUT/f'road_bounds{suffix}.bin').write_bytes(bytes(road_bounds))
+    (OUT/f'world{suffix}.bin').write_bytes(bytes(t for row in world for t in row))
+    return world,centers
+world,centers=make_route(2)
+make_route(1)
+make_route(3)
 # Art is authored as indexed pixels, then packed into real 16x16 masks.
 car=image(16,32); d=ImageDraw.Draw(car)
 d.polygon([(6,0),(9,0),(12,2),(13,5),(14,8),(14,25),(13,29),(11,31),(4,31),(2,29),(1,25),(1,8),(2,5),(3,2)],fill=1)

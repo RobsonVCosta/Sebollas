@@ -53,7 +53,7 @@ ApplyStagePalette:
 CowSpawnDelay:
     ld a,(_stage)
     cp 3
-    ld a,48
+    ld a,32
     ret z
     ld a,(_stage)
     cp 2
@@ -102,6 +102,10 @@ CampaignTick:
     jp z,EndingTick
     cp 7
     jp z,CheeseBonusTick
+    cp 8
+    jp nc,EndingArtTick
+    cp 6
+    jp z,CreditsTick
     jp MenuTick ; credits wait for a released and re-pressed start key
 .stage:
     ld hl,(_stageTimer)
@@ -197,10 +201,12 @@ BeginBoss:
     ld (_throwClock),a
     xor a
     ld (_bossDirection),a
+    ld (_bossDefeat),a
     ld (_bossFlash),a
     ld (_caneActive),a
     ld (_cows),a
     ld (_cows+8),a
+    ld (_cows+16),a
     ld (_cheese),a
     ld (_refueling),a
     ld (_invulnerable),a
@@ -219,6 +225,9 @@ BeginBoss:
     jp UploadSprites
 
 BossTick:
+    ld a,(_bossDefeat)
+    or a
+    jp nz,BossDefeatTick
     call MovePlayer
     call UpdateHornInput
     ld a,(_hornPhase)
@@ -290,8 +299,36 @@ BossTakeHit:
     ld (_bossFlash),a
     ld hl,_bossHP
     dec (hl)
-    jp z,BeginCheeseBonus
+    ret nz
+    ld a,1
+    ld (_bossDefeat),a
+    xor a
+    ld (_caneActive),a
+    ld (_hornPhase),a
+    ld (_hornClock),a
+    ld a,75
+    ld (_bossFlash),a
     ret
+
+BossDefeatTick:
+    ld a,(_bossDefeat)
+    cp 2
+    jr z,.run
+    ld hl,_bossFlash
+    dec (hl)
+    jp nz,.draw
+    ld a,2
+    ld (_bossDefeat),a
+    jp .draw
+.run:
+    ld a,(_bossX)
+    add a,2
+    cp 240
+    jp nc,BeginCheeseBonus
+    ld (_bossX),a
+.draw:
+    call BuildBossSprites
+    jp UploadSprites
 
 UpdateCane:
     ld a,(_caneActive)
@@ -414,6 +451,7 @@ BeginEnding:
     ld (_caneActive),a
     ld (_cows),a
     ld (_cows+8),a
+    ld (_cows+16),a
     ld (_cheese),a
     ld (_refueling),a
     ld (_driveStarted),a
@@ -426,7 +464,7 @@ BeginEnding:
     ld a,120
     ld (_carX),a
     ld (_carY),a
-    ld a,20
+    ld a,248 ; starts fully outside the left edge
     ld (_busColumn),a
     ld a,255
     ld (_runnerSmallX),a
@@ -450,12 +488,13 @@ EndingTick:
     jp z,.park
     cp 2
     jp z,.hold
+    cp 3
+    jp z,.wait
+    cp 4
+    jp nc,.bus
     ld hl,(_endingClock)
     inc hl
     ld (_endingClock),hl
-    ld a,h
-    or a
-    jr nz,.run
     ld a,l
     cp 20
     jr nz,.tall
@@ -470,9 +509,45 @@ EndingTick:
 .fat:
     ld a,l
     cp 70
-    jr nz,.run
+    jp nz,.draw
     ld a,112
     ld (_runnerFatX),a
+    ld a,3
+    ld (_endingPhase),a
+    ld hl,100 ; let everyone stand outside the car for two seconds
+    ld (_stageTimer),hl
+    jp .draw
+.wait:
+    ld hl,(_stageTimer)
+    dec hl
+    ld (_stageTimer),hl
+    ld a,h
+    or l
+    jp nz,.draw
+    ld a,4
+    ld (_endingPhase),a
+    jp .draw
+.bus:
+    ld a,(_tick)
+    and 3
+    jr nz,.chase
+    ld a,(_busColumn)
+    cp 33
+    jr z,.chase
+    inc a
+    ld (_busColumn),a
+    call DrawBusRoad
+.chase:
+    ld a,(_endingPhase)
+    cp 5
+    jr z,.run
+    ld a,(_busColumn)
+    cp 18
+    jp c,.draw
+    cp 34
+    jp nc,.draw ; negative columns before the bus enters
+    ld a,5
+    ld (_endingPhase),a
 .run:
     ld hl,_runnerSmallX
     call AdvanceRunner
@@ -480,25 +555,15 @@ EndingTick:
     call AdvanceRunner
     ld hl,_runnerFatX
     call AdvanceRunner
-    ld a,(_endingClock)
-    and 15
-    jr nz,.boarded
-    ld a,(_busColumn)
-    cp 33
-    jr nc,.boarded
-    inc a
-    ld (_busColumn),a
-    call DrawBusRoad
-.boarded:
     ld a,(_runnerSmallX)
     cp 254
-    jr nz,.draw
+    jp nz,.draw
     ld a,(_runnerTallX)
     cp 254
-    jr nz,.draw
+    jp nz,.draw
     ld a,(_runnerFatX)
     cp 254
-    jr nz,.draw
+    jp nz,.draw
     ld a,2
     ld (_endingPhase),a
     ld hl,80
@@ -515,19 +580,19 @@ EndingTick:
     jr nc,.parked
     inc a
     ld (_carY),a
-    jr .draw
+    jp .draw
 .parked:
     ld a,1
     ld (_endingPhase),a
-    jr .draw
+    jp .draw
 .hold:
     ld hl,(_stageTimer)
     dec hl
     ld (_stageTimer),hl
     ld a,h
     or l
-    jp z,ShowCredits
-    jr .draw
+    jp z,BeginEndingArt
+    jp .draw
 
 AdvanceRunner:
     ld a,(hl)
@@ -632,6 +697,10 @@ BuildEndingSprites:
     ld a,RUNNER_FAT_PATTERN/4
 .person:
     ld c,a
+    ld a,(_endingPhase)
+    cp 5
+    ld a,0
+    jr nz,.pose
     ld a,(_tick)
     rrca
     rrca
@@ -639,11 +708,13 @@ BuildEndingSprites:
     and 1
     add a,a
     add a,a
+.pose:
     add a,c
     ld d,96
     jp DrawPerson
 
 ShowCredits:
+    call SetupGameVideo ; restore tiles, palette and banks after SCREEN 8
     ld a,6
     ld (_state),a
     xor a
@@ -653,31 +724,72 @@ ShowCredits:
     ld bc,768
     ld a,32
     call FILVRM
-    ld de,CreditsHeader
-    ld bc,010Ch
-    call PutText
-    ld hl,CreditLines
-.next:
+    ld hl,CreditSequence
+    ld (_creditNext),hl
+    ld hl,0
+    ld (_creditDest),hl
+    xor a
+    ld (_creditClock),a
+    ret
+
+CreditsTick:
+    call RevealCreditLetter
+    jp MenuTick
+
+; A character every two game ticks, including the heading and signature.
+RevealCreditLetter:
+    ld a,(_creditClock)
+    or a
+    jr z,.ready
+    dec a
+    ld (_creditClock),a
+    ret
+.ready:
+    ld hl,(_creditNext)
+    ld de,(_creditDest)
+    ld a,d
+    or e
+    jr nz,.letter
+.line:
     ld a,(hl)
     cp 255
     ret z
-    ld b,a
+    ld e,a
+    ld d,0
     inc hl
-    ld c,(hl)
+    ex de,hl
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    ld bc,NAMTBL
+    add hl,bc
+    ex de,hl
+    ld a,(hl)
     inc hl
-    ld e,l
-    ld d,h
-.seek:
+    add a,e
+    ld e,a
+    jr nc,.letter
+    inc d
+.letter:
     ld a,(hl)
     inc hl
     or a
-    jr nz,.seek
+    jr nz,.write
+    jp .line
+.write:
     ld (_creditNext),hl
-    call PutText
-    ld hl,(_creditNext)
-    jr .next
+    push de
+    ex de,hl
+    call WRTVRM
+    pop hl
+    inc hl
+    ld (_creditDest),hl
+    ld a,1
+    ld (_creditClock),a
+    ret
 
-DrivePrompt: db "SETAS OU ESPACO PARA SAIR",0
 StageLabel: db "FASE ",0
 MoreCowsText: db "MAIS VACAS NA ESTRADA",0
 GarapaText: db "GAROTO DA GARAPA",0
@@ -686,7 +798,7 @@ StationHUD: db "POSTO",0
 VictoryText: db "VENCEMOS A GARAPA!",0
 BusDestination: db "ONIBUS PARA NOVA IGUA",244,"U",0
 CaughtBusText: db "PEGAMOS O ONIBUS!",0
-CreditsHeader: db "CREDITOS",0
 BusTileMap: db "N.IGUA",244,"U",208,209,210,211,212,213,214,215
     db 216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231
+CreditSequence: db 1,12,"CREDITOS",0
     include "resources/generated/credits.inc"

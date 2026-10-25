@@ -12,11 +12,11 @@ s=(d/'sprites.bin').read_bytes()
 assert v[0x3800:0x3800+len(s)]==s
 assert (d/'capture-palette.bin').read_bytes()==(d/'palette0.bin').read_bytes()
 assert v[0x1801:0x1806]==b'SCORE'
-assert bytes(v[a] for a in (0x1819,0x181b,0x181d))==bytes([140]*3)
+assert bytes(v[a] for a in (0x181d,0x181e,0x181f))==bytes([140]*3)
 assert all(t==193 or t in range(32,91) or 128<=t<=167 for t in v[0x1840:0x1b00])
 assert v[0x1821:0x1824]==b'GAS'
-assert v[0x1840-14:0x1840-6]==b'QUEIJOS '
-assert all(48<=ch<=57 for ch in v[0x1840-6:0x1840-4])
+assert v[0x1840-10:0x1840-2]==b'QUEIJOS '
+assert all(48<=ch<=57 for ch in v[0x1840-2:0x1840])
 print('Captured V9938: 3 pattern/color banks, sprite patterns, palette and fixed HUD match ROM assets')
 
 # Compare every pixel of the cheese over the bridge, including its clear border.

@@ -8,6 +8,7 @@ all:
 assets:
 	$(PYTHON) tools/build_assets.py
 	$(PYTHON) tools/build_title.py
+	$(PYTHON) tools/build_ending.py
 
 previews:
 	$(PYTHON) tools/render_previews.py

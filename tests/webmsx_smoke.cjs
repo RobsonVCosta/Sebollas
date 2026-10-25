@@ -68,8 +68,45 @@ const rom = fs.readFileSync(path.join(root, 'Sebollas.rom'));
             assert.equal(await read(0xC059), 1, 'horn responds');
             await page.keyboard.up('Space');
             await page.locator('canvas').first().screenshot({ path: path.join(root, `previews/game-webmsx-${machine}.png`) });
+            // Jump to the natural end of the bus scene; exercise the complete
+            // slideshow and credit transition without replaying the campaign.
+            await page.evaluate(() => {
+                const bus = WMSX.room.machine.bus;
+                bus.write(0xC000, 5); bus.write(0xC06E, 2);
+                bus.write(0xC063, 1); bus.write(0xC064, 0);
+            });
+            const waitState = async (state, loaded = false) => {
+                for (let i = 0; i < 500; i++) {
+                    if (await read(0xC000) === state && (!loaded ||
+                        (await read(0xC063) >= 240 && await read(0xC063) < 250))) return;
+                    await frames(1);
+                }
+                throw new Error(`Timed out waiting for state ${state}`);
+            };
+            await waitState(8, true);
+            assert.equal(await read(0xFCAF), 8, 'SCREEN 8 illustration 1');
+            await page.locator('canvas').first().screenshot({ path: path.join(root, `previews/ending-1-webmsx-${machine}.png`) });
+            await frames(180);
+            assert.equal(await read(0xC000), 8, 'first image stays visible');
+            await waitState(9, true);
+            assert.equal(await read(0xFCAF), 8, 'SCREEN 8 illustration 2');
+            await page.locator('canvas').first().screenshot({ path: path.join(root, `previews/ending-2-webmsx-${machine}.png`) });
+            await frames(180);
+            assert.equal(await read(0xC000), 9, 'second image stays visible');
+            await waitState(6);
+            assert.equal(await read(0xFCAF), 4, 'credits restore SCREEN 4');
+            await frames(30);
+            await page.locator('canvas').first().screenshot({ path: path.join(root, `previews/credits-revealing-webmsx-${machine}.png`) });
+            await frames(500);
+            await page.locator('canvas').first().screenshot({ path: path.join(root, `previews/credits-webmsx-${machine}.png`) });
+            await page.keyboard.down('Space');
+            await frames(15);
+            await page.keyboard.up('Space');
+            await frames(30);
+            assert.equal(await read(0xC000), 0, 'return to title');
+            assert.equal(await read(0xFCAF), 5, 'title banks restored');
             assert.deepEqual(errors, [], 'browser errors');
-            console.log(`PASS WebMSX ${machine}: automatic ASCII8, title, game banks, first input, scrolling, horn`);
+            console.log(`PASS WebMSX ${machine}: automatic ASCII8, title, game banks, first input, scrolling, horn, ending images, credits, return to title`);
             await page.close();
         }
     } finally {

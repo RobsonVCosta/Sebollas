@@ -10,7 +10,7 @@ A abertura usa **SCREEN 5, 256 × 212 pixels**, com a arte de referência conver
 
 Requisitos: MSX2 ou superior, ou emulador com BIOS compatível. Não funciona como jogo no MSX1; nesse modelo, a ROM apresenta a mensagem de que requer MSX2.
 
-A imagem [Sebollas.rom](Sebollas.rom) é um cartucho de **64 KiB, com mapper ASCII8**, com cabeçalho `AB` e origem em `0x4000`.
+A imagem [Sebollas.rom](Sebollas.rom) é um cartucho de **256 KiB, com mapper ASCII8**, com cabeçalho `AB` e origem em `0x4000`.
 
 ```sh
 openmsx -machine C-BIOS_MSX2 -cart Sebollas.rom -romtype ASCII8
@@ -34,8 +34,8 @@ O jogo lê o teclado pela BIOS. Joystick físico não está selecionado nesta ve
 - As fases mantêm a pontuação. Os queijos são convertidos em bônus ao final de cada etapa; a próxima começa com o contador zerado, tanque cheio e três corações. As paletas diferenciam cada etapa.
 - Cada fase tem mais vacas paradas: os intervalos de geração caem de 128 para 80 e depois para 48 ticks, respeitando o limite gráfico e a separação vertical entre elas. As vacas entram em **Y=16, no topo da área de jogo abaixo do HUD**, e descem exatamente oito pixels junto com cada passo do cenário. Ao abastecer, o cenário e as vacas pausam juntos.
 - Ao terminar o percurso da fase 3, o **garoto da garapa** lança canas na direção do carro. Desvie com as setas e buzine para atingi-lo. São necessárias **12 buzinadas completas**, e manter Espaço pressionado repete a sequência sem contar a mesma nota várias vezes.
-- Depois da vitória, o Fusca estaciona e saem três garotos, com tamanhos e silhuetas diferentes. Eles correm atrás do ônibus para Nova Iguaçu, embarcam e dão lugar aos créditos. Antes dessa animação, os queijos da fase 3 também são somados ao placar, após derrotar o garoto da garapa.
-- A estrada faz curvas sinuosas e se estreita antes das pontes. Sair da pista, atingir a margem ou entrar no rio custa uma vida e recoloca o carro no centro do trecho atual da estrada.
+- Depois da vitória, o Fusca estaciona e saem três garotos, com tamanhos e silhuetas diferentes. Eles correm atrás do ônibus para Nova Iguaçu, embarcam e dão lugar às duas ilustrações finais: primeiro os amigos ao lado do Fusca, depois correndo atrás do ônibus. Cada imagem permanece por 5 segundos; os créditos aparecem em seguida, letra a letra, a 25 caracteres por segundo. Os três corações ficam juntos no canto superior direito. Antes dessa animação, os queijos da fase 3 também são somados ao placar, após derrotar o garoto da garapa.
+- A estrada faz curvas sinuosas e se estreita antes das pontes. O carro fica limitado às bordas da área transitável, considerando toda a sua largura e altura, inclusive nas curvas, pontes e acessos aos postos. Encostar na lateral não tira vida.
 - O tanque começa cheio, com **100 unidades**, e gasta uma unidade a cada 6 ticks (cerca de 12 segundos por tanque, acompanhando a rolagem mais rápida). Tanque vazio encerra a partida.
 - Existem **dois postos**, com bombas vermelhas e placas `POSTO`, à direita da estrada. Encoste no piso cinza junto às bombas para abastecer automaticamente; a rolagem pausa enquanto o tanque enche, acompanhada por pulsos sonoros que sobem de tom, inspirados no abastecimento de River Raid. O marcador `GAS`, inspirado em River Raid, tem escala `E`–`F` e ponteiro móvel. Abaixo de 21 unidades, o ponteiro fica vermelho e toca um alerta agudo de duas notas alternadas, no volume máximo do PSG; com 10 unidades ou menos o alerta fica mais rápido. A música cede o canal ao aviso, para ele permanecer audível. Abastecer interrompe os avisos.
 - Uma musiquinha original, em estilo chiptune rural, toca em loop e em volume baixo durante a partida. Ela pausa para a buzina, o abastecimento e os alertas, retomando depois. A melodia acompanha o final e os créditos, e para na abertura ou em GAME OVER.
@@ -43,7 +43,7 @@ O jogo lê o teclado pela BIOS. Joystick físico não está selecionado nesta ve
 - Cada batida retira uma vida e concede **dois segundos de invulnerabilidade**, com o carro piscando.
 - A terceira batida mostra `GAME OVER` no centro do cenário da partida, mantendo a pontuação final no HUD.
 - A buzina está uma oitava acima da versão anterior e toca um “bi” curto de 120 ms, uma pausa de 80 ms e um “biiii” longo de 480 ms, sem efeito visual. As vacas ficam paradas no meio da estrada até ouvirem a buzina. Ela alcança imediatamente as vacas próximas à frente do carro, que saem para uma das margens e liberam a passagem. A vaca usa uma pose fixa, espelhada conforme a direção, sem animação ao andar.
-- Queijos redondos, com fundo transparente, descem pela pista, girando e acompanhando suas curvas. Encoste o Fusca para recolhê-los. O painel mostra **QUEIJOS** com a quantidade, na segunda linha à direita do combustível, inclusive durante o abastecimento. Cada queijo vale **100 pontos**, creditados somente ao final da fase, sem somar duas vezes. Deixar um queijo passar não tira vida.
+- Queijos redondos, com fundo transparente, descem pela pista, girando e acompanhando suas curvas. Encoste o Fusca para recolhê-los. O painel mostra **QUEIJOS** com a quantidade, alinhado à margem direita da segunda linha, inclusive durante o abastecimento. Cada queijo vale **100 pontos**, creditados somente ao final da fase, sem somar duas vezes. Deixar um queijo passar não tira vida.
 - Na tela de bônus, o contador de queijos diminui um por vez, enquanto o bônus e o placar sobem de 100 em 100, com um bip por unidade e um acorde final. A fase 3 faz essa contagem depois do confronto da garapa.
 - Cada vaca espantada vale **100 pontos**, concedidos uma única vez.
 - Existem no máximo duas vacas e um queijo visíveis. A dificuldade é fixa.
@@ -83,7 +83,7 @@ No PowerShell, usando a distribuição do assembler na pasta superior:
 ..\sjasmplus.exe Sebollas.asm
 ```
 
-A diretiva `OUTPUT` substitui `Sebollas.rom`. O cartucho usa oito bancos de 8 KiB no mapper ASCII8, totalizando 65.536 bytes. O banco 0 mantém todo o código fixo; os bancos 1 a 3 contêm os recursos da partida; os bancos 4 e 5 guardam a abertura; os bancos 6 e 7 são reservados. A janela 6000–7FFF permanece no banco 1, enquanto as janelas 8000–9FFF e A000–BFFF alternam entre os recursos da partida e da abertura. O fonte verifica os limites de cada janela com `ASSERT`.
+A diretiva `OUTPUT` substitui `Sebollas.rom`. O cartucho usa 32 bancos de 8 KiB no mapper ASCII8, totalizando 262.144 bytes. O banco 0 mantém todo o código fixo; os bancos 1 a 3 contêm os recursos da partida; os bancos 4 e 5 guardam a abertura; os bancos 6 e 7 são reservados. As duas ilustrações finais usam SCREEN 8 (256 × 212, 256 cores fixas GRB332), a partir dos bancos 8 e 16. Cada imagem tem 54.272 bytes, copiados por uma janela de 8 KiB; o restante do cartucho é reservado. A janela 6000–7FFF permanece no banco 1, enquanto as janelas 8000–9FFF e A000–BFFF alternam entre os recursos da partida e da abertura. O fonte verifica os limites de cada janela com `ASSERT`.
 
 A montagem foi validada com **SjASMPlus 1.21.0**, sem erros ou avisos.
 
@@ -111,7 +111,7 @@ make test-emulator    # rotinas Z80 e gameplay contínuo em 50/60 Hz
 make captures         # capturas reais de abertura, jogo e GAME OVER
 ```
 
-O teste opcional no WebMSX usa Node.js 18+, Chrome e `playwright-core`. Ele acessa o emulador público, carrega a ROM local sem forçar o mapper e verifica abertura, bancos de recursos, espera inicial, direção, scroll e buzina em MSX2+ de 50 e 60 Hz:
+O teste opcional no WebMSX usa Node.js 18+, Chrome e `playwright-core`. Ele acessa o emulador público, carrega a ROM local sem forçar o mapper e verifica abertura, bancos de recursos, espera inicial, direção, scroll, buzina, duas imagens finais, créditos e retorno à abertura em MSX2+ de 50 e 60 Hz:
 
 ```sh
 npm install --prefix /tmp/sebollas-webmsx-test playwright-core
@@ -125,6 +125,7 @@ Use `CHROME_PATH` se o Chrome estiver fora de `/usr/bin/google-chrome`. As captu
 | Arquivo ou pasta | Responsabilidade |
 | --- | --- |
 | `Sebollas.asm` | Cabeçalho, configuração do vídeo, estados, controles, buzina, vacas, colisões, cenário e composição dos sprites. |
+| `ending_art.asm` | Duas ilustrações em SCREEN 8 por 250 ticks cada, antes dos créditos; restauração do vídeo e dos bancos. |
 | `campaign.asm` | Partida parada até o primeiro comando, três fases, garoto da garapa, canas, ônibus, três corredores e créditos. |
 | `route.asm` | Combustível, abastecimento, colisão com terreno, chegada e marcador com ponteiro. |
 | `cheese.asm` | Queijos rolando, coleta pendente de bônus e contador no HUD. |
@@ -175,13 +176,13 @@ A lógica roda a 50 ticks por segundo. Em vídeo de 60 Hz, um de cada seis VBlan
 
 ## Verificação realizada
 
-- Montagem sem erros ou avisos; cartucho ASCII8 de 64 KiB.
-- **WebMSX 6.0.8 no Chrome**, em MSX2+ de 50 e 60 Hz: detecção automática ASCII8, abertura em SCREEN 5, transição para SCREEN 4, bancos de recursos, espera pelo primeiro comando, movimento, scroll e buzina. A campanha completa foi validada no openMSX.
-- **Doze testes Python**: fonte original, paletas, endereços de VRAM, máscaras, direções e fidelidade às cores da vaca, percurso e pontos de interesse, ROM, compressão da abertura, texto integral dos créditos, tamanhos dos três corredores e limite de sprites.
-- **144 casos de rotinas Z80 em cada frequência**, no openMSX 17.0 com C-BIOS MSX2 de 50 e 60 Hz: oito direções, bordas, alcance da buzina, vacas, abertura em SCREEN 5, transição para a partida, pontuação BCD, três vidas, invulnerabilidade, menu, áudio, combustível, alerta, marcador, sequência da buzina, som de abastecimento, música e prioridade dos efeitos, coleta de queijos, postos, pontes, terreno e chegada, espera inicial, sequência das fases, canas, resistência do chefe, embarque, créditos e limite de sprites da animação, entrada das vacas no topo, sincronismo com o cenário e soma animada dos queijos.
+- Montagem sem erros ou avisos; cartucho ASCII8 de 256 KiB.
+- **WebMSX 6.0.8 no Chrome**, em MSX2+ de 50 e 60 Hz: detecção automática ASCII8, abertura em SCREEN 5, transição para SCREEN 4, bancos de recursos, espera pelo primeiro comando, movimento, scroll, buzina, sequência das duas imagens, créditos e retorno à abertura. A campanha completa foi validada no openMSX.
+- **Quatorze testes Python**: fonte original, paletas, endereços de VRAM, máscaras, direções e fidelidade às cores da vaca, percurso e pontos de interesse, ROM, compressão da abertura, texto integral dos créditos, tamanhos dos três corredores, limites transitáveis da estrada, limite de sprites e conversão GRB332 das imagens finais com posicionamento nos bancos da ROM.
+- **154 casos de rotinas Z80 em cada frequência**, no openMSX 17.0 com C-BIOS MSX2 de 50 e 60 Hz: oito direções, bordas, alcance da buzina, vacas, abertura em SCREEN 5, transição para a partida, pontuação BCD, três vidas, invulnerabilidade, menu, áudio, combustível, alerta, marcador, sequência da buzina, som de abastecimento, música e prioridade dos efeitos, coleta de queijos, postos, pontes, terreno e chegada, espera inicial, sequência das fases, canas, resistência do chefe, embarque, créditos e limite de sprites da animação, entrada das vacas no topo, sincronismo com o cenário e soma animada dos queijos.
 - Dois testes contínuos de aproximadamente 30 segundos, com direção e buzina: **zero quadros com excesso de sprites**, máximo observado de oito por linha.
 - Duas viagens da fase 1, em 50 e 60 Hz, isolando o percurso e os dois postos das batidas com vacas.
-- **Duas campanhas completas por comandos de teclado, sem alterar vida, combustível, posição ou resistência do chefe**: três fases, seis postos, 12 acertos de buzina no chefe, corrida atrás do ônibus e chegada aos créditos. Os testes verificam um número crescente de vacas, as três telas de bônus e cada conversão de queijo em exatamente 100 pontos, com zero excesso de sprites em 50 e 60 Hz.
+- **Duas campanhas completas por comandos de teclado, sem alterar vida, combustível, posição ou resistência do chefe**: três fases, seis postos, 12 acertos de buzina no chefe, corrida atrás do ônibus e chegada aos créditos. Os testes verificam um número crescente de vacas, as três telas de bônus e cada conversão de queijo em exatamente 100 pontos, com zero excesso de sprites em 50 e 60 Hz. Verificam que nenhum pixel do carro ultrapassa os limites transitáveis. Também verificam a ordem das duas imagens e exatamente 250 ticks (5 segundos) por imagem.
 - Capturas reais de [abertura](previews/abertura-openmsx.png), [gameplay](previews/gameplay-openmsx.png) e [GAME OVER](previews/gameover-openmsx.png), além de [ponte](previews/ponte-openmsx.png), [posto](previews/posto-openmsx.png) e [chegada](previews/chegada-openmsx.png), além de uma [cena com queijo transparente e vaca](previews/queijos-openmsx.png), [garapa](previews/garapa-openmsx.png), [corrida até o ônibus](previews/onibus-openmsx.png) , [créditos](previews/creditos-openmsx.png) e [contagem animada do bônus](previews/bonus-openmsx.png).
 - Comparação da VRAM capturada com os padrões, cores, paleta e fonte empacotados na ROM; comparação completa do bitmap e da paleta da abertura com os recursos convertidos, respeitando a área piscante do PLAY.
 

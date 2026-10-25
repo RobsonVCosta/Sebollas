@@ -25,7 +25,7 @@ CarTerrain:
     ld e,a
     ld d,0
     add hl,de
-    ld de,WorldMap
+    call GetWorldMap
     add hl,de
     ld a,(hl)
     ret
@@ -82,6 +82,7 @@ UpdateJourney:
 .saveClock:
     ld (_fuelClock),a
 .terrain:
+    call ClampCarToRoad
     call CarTerrain
     cp 130
     jr z,.arrival
@@ -91,13 +92,7 @@ UpdateJourney:
     jr z,.arrival
     cp 157
     jr z,.arrival
-    ld a,(_invulnerable)
-    or a
-    ret nz
-    ld a,(_terrainRow)
-    call RoadCenter
-    ld (_carX),a
-    jp LoseLife
+    ret
 .arrival:
     ld a,(_mapRow)
     cp 4
@@ -130,7 +125,7 @@ LoseLife:
 RoadCenter:
     ld e,a
     ld d,0
-    ld hl,RoadCenters
+    call GetRoadCenters
     add hl,de
     ld a,(hl)
     ret
@@ -181,4 +176,118 @@ DrawFuel:
     add hl,de
     pop af
     call WRTVRM
+    ret
+
+; Intersect the drivable span of every tile row covered by the 16x32 car.
+; Driveways and station forecourts remain accessible; bridge rails are walls.
+ClampCarToRoad:
+    ld a,(_state)
+    cp 4
+    jp z,.arena
+    cp 1
+    ret nz
+    xor a
+    ld (_roadMinX),a
+    ld a,240
+    ld (_roadMaxX),a
+    ld a,(_carY)
+    and 7
+    add a,31
+    srl a
+    srl a
+    srl a
+    inc a
+    ld (_roadRows),a
+    ld a,(_carY)
+    srl a
+    srl a
+    srl a
+    sub 2
+    ld b,a
+    ld a,(_mapRow)
+    add a,b
+    ld (_roadRow),a
+.row:
+    ld a,(_roadRow)
+    ld l,a
+    ld h,0
+    add hl,hl
+    push hl
+    call GetRoadBounds
+    pop de
+    add hl,de
+    ld d,(hl)
+    inc hl
+    ld e,(hl)
+    ld a,(_roadMinX)
+    cp d
+    jr nc,.max
+    ld a,d
+    ld (_roadMinX),a
+.max:
+    ld b,e
+    ld a,(_roadMaxX)
+    cp b
+    jr c,.advance
+    ld a,b
+    ld (_roadMaxX),a
+.advance:
+    ld hl,_roadRow
+    inc (hl)
+    ld hl,_roadRows
+    dec (hl)
+    jr nz,.row
+    jr .clamp
+.arena:
+    ld a,64
+    ld (_roadMinX),a
+    ld a,176
+    ld (_roadMaxX),a
+.clamp:
+    ld a,(_roadMinX)
+    ld b,a
+    ld a,(_carX)
+    cp b
+    jr nc,.upper
+    ld a,b
+.upper:
+    ld b,a
+    ld a,(_roadMaxX)
+    cp b
+    jr c,.save
+    ld a,b
+.save:
+    ld (_carX),a
+    ret
+
+; Stage-specific maps share the same houses, stations and finite route length.
+GetWorldMap:
+    ld de,WorldMap1
+    ld a,(_stage)
+    cp 1
+    ret z
+    ld de,WorldMap3
+    cp 3
+    ret z
+    ld de,WorldMap
+    ret
+GetRoadCenters:
+    ld hl,RoadCenters1
+    ld a,(_stage)
+    cp 1
+    ret z
+    ld hl,RoadCenters3
+    cp 3
+    ret z
+    ld hl,RoadCenters
+    ret
+GetRoadBounds:
+    ld hl,RoadBounds1
+    ld a,(_stage)
+    cp 1
+    ret z
+    ld hl,RoadBounds3
+    cp 3
+    ret z
+    ld hl,RoadBounds
     ret

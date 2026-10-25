@@ -96,9 +96,9 @@ DrawCheese:
 
 DrawCheeseHUD:
     ld de,CheeseLabel
-    ld bc,0112h
+    ld bc,0116h
     call PutText
-    ld hl,NAMTBL+32+26
+    ld hl,NAMTBL+32+30
 DrawCheeseDigits:
     ld a,(_cheeseCount)
     ld c,a

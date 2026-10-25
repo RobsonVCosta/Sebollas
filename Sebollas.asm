@@ -1,4 +1,4 @@
-; SEBOLLAS -- MSX2, SCREEN 4 game / SCREEN 5 title, 64 KiB ASCII8 cartridge.
+; SEBOLLAS -- MSX2, SCREEN 4 game / SCREEN 5 title / SCREEN 8 ending, ASCII8.
     include ram_vars.asm
     include bios.asm
     include "resources/generated/assets.inc"
@@ -359,6 +359,7 @@ MovePlayer:
     add a,2
     ld (_carX),a
 .invulnerability:
+    call ClampCarToRoad
     ld a,(_invulnerable)
     or a
     ret z
@@ -384,11 +385,16 @@ ScareCowsAhead:
     ld ix,_cows
     call .cow
     ld ix,_cows+8
+    call .cow
+    ld ix,_cows+16
 .cow:
     ld a,(ix+0)
     or a
     ret z
     ld a,(ix+4)
+    or a
+    ret nz
+    ld a,(ix+5) ; stubborn cows never react to the horn
     or a
     ret nz
     ; Sound reaches the road ahead immediately, including a bend in the lane.
@@ -427,6 +433,9 @@ UpdateScroll:
     call .moveCow
     ld ix,_cows+8
     call .moveCow
+    ld ix,_cows+16
+    call .moveCow
+    call ClampCarToRoad
     jp DrawWorld
 .moveCow:
     ld a,(ix+0)
@@ -448,6 +457,8 @@ UpdateCows:
     call .walk
     ld ix,_cows+8
     call .walk
+    ld ix,_cows+16
+    call .walk
     ; Parked cows appear along the road, away from the destination courtyard.
     ld a,(_mapRow)
     cp 20
@@ -460,7 +471,7 @@ UpdateCows:
     add hl,hl
     add hl,hl
     add hl,hl
-    ld de,WorldMap
+    call GetWorldMap
     add hl,de
     ld a,(hl)
     cp 145
@@ -478,26 +489,57 @@ UpdateCows:
     ld ix,_cows+8
     ld a,(ix+0)
     or a
+    jr z,.spawnTest
+    ld a,(_stage)
+    cp 3
+    ret nz
+    ld ix,_cows+16
+    ld a,(ix+0)
+    or a
     ret nz
 .spawnTest:
-    ; Check full cow rectangles, including a possible scroll-step boundary.
+    ; Three cows can be adjacent vertically without sharing a scanline.
+    ld a,(_stage)
+    cp 3
+    ld b,64
+    jr nz,.spacing
+    ld b,48
+.spacing:
     ld a,(_cows)
     or a
     jr z,.other
     ld a,(_cows+2)
-    cp 64
+    cp b
     ret c
 .other:
     ld a,(_cows+8)
     or a
-    jr z,.spawn
+    jr z,.third
     ld a,(_cows+10)
-    cp 64
+    cp b
+    ret c
+.third:
+    ld a,(_cows+16)
+    or a
+    jr z,.spawn
+    ld a,(_cows+18)
+    cp b
     ret c
 .spawn:
     ld (ix+0),1
     ld (ix+2),16
     ld (ix+4),0
+    ld (ix+5),0
+    ld a,(_stage)
+    cp 3
+    jr nz,.direction
+    ld hl,_cowSerial
+    inc (hl)
+    ld a,(hl)
+    and 3
+    jr nz,.direction
+    ld (ix+5),1
+.direction:
     ld a,(_nextDirection)
     ld (ix+3),a
     xor 1
@@ -548,6 +590,11 @@ CheckHits:
     ld a,(_state)
     cp 1
     ret nz
+    call .cow
+    ld a,(_state)
+    cp 1
+    ret nz
+    ld ix,_cows+16
 .cow:
     ld a,(ix+0)
     or a
@@ -589,7 +636,7 @@ DrawHUD:
     ld de,_score
     ld bc,0007h
     call PutText
-    ld hl,NAMTBL+25
+    ld hl,NAMTBL+29
     ld b,3
     ld a,(_lives)
     ld c,a
@@ -606,7 +653,6 @@ DrawHUD:
     call WRTVRM
     pop hl
     pop bc
-    inc hl
     inc hl
     djnz .hearts
     call DrawStageHUD
@@ -629,7 +675,9 @@ DrawWorld:
     add hl,hl
     add hl,hl
     add hl,hl
-    ld bc,WorldMap
+    call GetWorldMap
+    ld b,d
+    ld c,e
     add hl,bc
     pop de
     ld bc,32
@@ -770,6 +818,8 @@ BuildSprites:
     call DrawCow
     ld ix,_cows+8
     call DrawCow
+    ld ix,_cows+16
+    call DrawCow
     jp DrawCheese
 DrawCow:
     ld a,(ix+0)
@@ -833,6 +883,7 @@ UploadSprites:
     include sfx.inc
     include music.asm
     include title.asm
+    include ending_art.asm
 TitleText: db "SEBOLLAS",0
 SubtitleText: db "AVENTURA NA FAZENDA",0
 PlayText: db "PLAY",0
@@ -854,11 +905,18 @@ TilePatterns: incbin "resources/generated/patterns.bin"
 TileColors: incbin "resources/generated/colors.bin"
 WorldMap: incbin "resources/generated/world.bin"
 RoadCenters: incbin "resources/generated/road_centers.bin"
+RoadBounds: incbin "resources/generated/road_bounds.bin"
 SpritePatterns: incbin "resources/generated/sprites.bin"
 SpriteLineColors: incbin "resources/generated/sprite_colors.bin"
 GamePalette: incbin "resources/generated/palette0.bin"
 StagePalette1: incbin "resources/generated/palette1.bin"
 StagePalette2: incbin "resources/generated/palette2.bin"
+WorldMap1: incbin "resources/generated/world1.bin"
+RoadCenters1: incbin "resources/generated/road_centers1.bin"
+RoadBounds1: incbin "resources/generated/road_bounds1.bin"
+WorldMap3: incbin "resources/generated/world3.bin"
+RoadCenters3: incbin "resources/generated/road_centers3.bin"
+RoadBounds3: incbin "resources/generated/road_bounds3.bin"
 GameDataEnd:
     ASSERT GameDataEnd <= 0C000h
     defs 0C000h-$,0FFh
@@ -874,3 +932,12 @@ TitleBankEnd:
     org 0
     defs 4000h,0FFh ; unused banks 6 and 7, power-of-two 64K cartridge
     ASSERT $ == 4000h
+    ; Each illustration occupies a 64 KiB region (eight ASCII8 banks).
+    org 0
+    incbin "resources/generated/ending1.bin"
+    defs 10000h-$,0FFh
+    org 0
+    incbin "resources/generated/ending2.bin"
+    defs 10000h-$,0FFh
+    org 0
+    defs 10000h,0FFh ; reserved; power-of-two 256 KiB cartridge

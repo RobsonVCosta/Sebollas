@@ -15,7 +15,7 @@ proc expect {name actual expected} {
 proc prepare {} {
     keymatrixup 8 255
     keymatrixup 7 255
-    foreach {a v} {0xC000 1 0xC004 120 0xC005 128 0xC006 3 0xC007 0 0xC015 0 0xC018 64 0xC017 138 0xC04E 100 0xC04F 0 0xC050 0 0xC052 0 0xC053 0 0xC054 0 0xC055 0 0xC056 0 0xC057 48 0xC058 0 0xC01C 0 0xC01D 0 0xC01E 0 0xC059 0 0xC05A 0 0xC05B 0 0xC05C 0 0xC05D 0 0xC05E 0 0xC060 1 0xC061 1 0xC062 1 0xC063 0 0xC064 0 0xC065 12 0xC066 120 0xC067 0 0xC068 24 0xC069 0 0xC06A 0 0xC06B 0 0xC06C 120 0xC06D 0 0xC077 0 0xC078 0 0xC079 0 0xC07A 0 0xC084 0 0xC085 0 0xC086 0 0xC087 0} {wr $a $v}
+    foreach {a v} {0xC000 1 0xC004 120 0xC005 128 0xC006 3 0xC007 0 0xC015 0 0xC018 64 0xC017 138 0xC04E 100 0xC04F 0 0xC050 0 0xC052 0 0xC053 0 0xC054 0 0xC055 0 0xC056 0 0xC057 48 0xC058 0 0xC01C 0 0xC01D 0 0xC01E 0 0xC059 0 0xC05A 0 0xC05B 0 0xC05C 0 0xC05D 0 0xC05E 0 0xC060 1 0xC061 1 0xC062 1 0xC063 0 0xC064 0 0xC065 12 0xC066 120 0xC067 0 0xC068 24 0xC069 0 0xC06A 0 0xC06B 0 0xC06C 120 0xC06D 0 0xC077 0 0xC078 0 0xC079 0 0xC07A 0 0xC084 0 0xC085 0 0xC086 0 0xC087 0 0xC08F 0 0xC090 0} {wr $a $v}
     for {set a 0xC008} {$a<0xC00C} {incr a} {wr $a 0}
     for {set a 0xC020} {$a<0xC038} {incr a} {wr $a 0}
 }
@@ -48,10 +48,10 @@ foreach {name mask dx dy} {up 32 0 -1 upright 160 2 -1 right 128 2 0 downright 1
     case $name MovePlayer [list keymatrixdown 8 $mask] "expect x \[rd 0xC004\] [expr {120+$dx}]; expect y \[rd 0xC005\] [expr {128+$dy}]"
 }
 case clamp_top_right MovePlayer {wr 0xC004 208; wr 0xC005 32; keymatrixdown 8 160} {
-    expect x [rd 0xC004] 208; expect y [rd 0xC005] 32
+    expect x [rd 0xC004] 160; expect y [rd 0xC005] 32
 }
 case clamp_bottom_left MovePlayer {wr 0xC004 32; wr 0xC005 144; keymatrixdown 8 80} {
-    expect x [rd 0xC004] 32; expect y [rd 0xC005] 144
+    expect x [rd 0xC004] 80; expect y [rd 0xC005] 144
 }
 case horn_scares ScareCowsAhead {cow 100 80} {
     expect scared [rd 0xC024] 1
@@ -82,7 +82,7 @@ case third_hit_gameover CheckHits {
     expect state [rd 0xC000] 2; expect lives [rd 0xC006] 0
     expect world_preserved [debug read VRAM 0x18AC] 130
     expect centered_message [debug read_block VRAM [expr {0x1800+11*32+11}] 9] "GAME OVER"
-    expect last_heart_off [debug read VRAM 0x1819] 141
+    expect last_heart_off [debug read VRAM 0x181D] 141
     expect start_requires_release [rd 0xC01A] 0
 }
 case gameover_to_title MenuTick {wr 0xC000 2; wr 0xC01A 1; keymatrixdown 8 1} {
@@ -137,7 +137,7 @@ case fixed_hud UpdateScroll {
 foreach lives {0 1 2 3} {
     case hearts_$lives DrawHUD [list wr 0xC006 $lives] "
         for {set i 0} {\$i<3} {incr i} {
-            expect heart_\$i \[debug read VRAM \[expr {0x1819+\$i*2}\]\] \[expr {\$i<$lives ? 140 : 141}\]
+            expect heart_\$i \[debug read VRAM \[expr {0x181D+\$i}\]\] \[expr {\$i<$lives ? 140 : 141}\]
         }
     "
 }
@@ -169,10 +169,10 @@ case tank_caps_at_100 UpdateJourney {wr 0xC017 93; wr 0xC004 168; wr 0xC04E 100}
 case filling_pauses_scroll UpdateScroll {wr 0xC050 1; wr 0xC016 7} {expect maprow [rd 0xC017] 138}
 case route_does_not_wrap UpdateScroll {wr 0xC017 0; wr 0xC016 7} {expect maprow [rd 0xC017] 0}
 case bridge_safe UpdateJourney {wr 0xC017 68} {expect lives [rd 0xC006] 3}
-case river_collision UpdateJourney {wr 0xC017 68; wr 0xC004 72} {
-    expect lives [rd 0xC006] 2; expect rescue_x [rd 0xC004] [debug read memory [expr {$::sym(RoadCenters)+85}]]
+case river_collision UpdateJourney {wr 0xC060 2; wr 0xC017 68; wr 0xC004 72} {
+    expect lives [rd 0xC006] 3; expect wall_x [rd 0xC004] 120
 }
-case narrow_road_collision UpdateJourney {wr 0xC017 110; wr 0xC004 32} {expect lives [rd 0xC006] 2}
+case narrow_road_wall UpdateJourney {wr 0xC060 2; wr 0xC017 110; wr 0xC004 32} {expect lives [rd 0xC006] 3; expect wall_x [rd 0xC004] 80}
 case arrival UpdateJourney {wr 0xC017 0; wr 0xC005 80} {
     expect state [rd 0xC000] 7
     expect current_stage [rd 0xC060] 1
@@ -358,11 +358,11 @@ case stage_card_resumes CampaignTick {wr 0xC000 3; wr 0xC060 2; wr 0xC063 1; wr 
 }
 case phase_one_cow_delay CowSpawnDelay {} {expect delay [reg A] 128}
 case phase_two_cow_delay CowSpawnDelay {wr 0xC060 2} {expect delay [reg A] 80}
-case phase_three_cow_delay CowSpawnDelay {wr 0xC060 3} {expect delay [reg A] 48}
+case phase_three_cow_delay CowSpawnDelay {wr 0xC060 3} {expect delay [reg A] 32}
 case phase_three_opens_boss CompleteStage {wr 0xC060 3} {expect fight [rd 0xC000] 4; expect health [rd 0xC065] 12}
 case boss_needs_many_honks BossTakeHit {wr 0xC000 4; wr 0xC005 136} {expect fight [rd 0xC000] 4; expect health [rd 0xC065] 11}
 case long_horn_is_one_hit BossTick {wr 0xC000 4; wr 0xC005 136; wr 0xC059 3; wr 0xC05A 12; keymatrixdown 8 1} {expect health [rd 0xC065] 12}
-case last_honk_wins BossTakeHit {wr 0xC000 4; wr 0xC005 136; wr 0xC065 1; wr 0xC060 3} {expect bonus_first [rd 0xC000] 7; expect defeated [rd 0xC065] 0}
+case last_honk_wins BossTakeHit {wr 0xC000 4; wr 0xC005 136; wr 0xC065 1; wr 0xC060 3} {expect still_visible [rd 0xC000] 4; expect defeated [rd 0xC065] 0; expect blinking [rd 0xC090] 1; expect pause [rd 0xC06D] 75}
 case garapa_throws_cane UpdateCane {wr 0xC000 4; wr 0xC068 0; wr 0xC066 132} {
     expect active [rd 0xC069] 1; expect x [rd 0xC06A] 132; expect y [rd 0xC06B] 64
 }
@@ -371,18 +371,43 @@ case cane_takes_one_heart UpdateCane {wr 0xC000 4; wr 0xC005 136; wr 0xC069 1; w
 }
 case cane_respects_protection UpdateCane {wr 0xC000 4; wr 0xC005 136; wr 0xC007 50; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 128} {expect lives [rd 0xC006] 3}
 case car_parks_for_ending EndingTick {wr 0xC000 5; wr 0xC06E 0; wr 0xC005 135; wr 0xC072 255; wr 0xC073 255; wr 0xC074 255} {expect parked_y [rd 0xC005] 136}
-case small_boy_exits EndingTick {wr 0xC000 5; wr 0xC06E 1; wr 0xC06F 19; wr 0xC070 0; wr 0xC071 20; wr 0xC072 255; wr 0xC073 255; wr 0xC074 255} {expect small [rd 0xC072] 113; expect tall_waits [rd 0xC073] 255}
-case tall_boy_exits EndingTick {wr 0xC000 5; wr 0xC06E 1; wr 0xC06F 44; wr 0xC070 0; wr 0xC071 20; wr 0xC072 254; wr 0xC073 255; wr 0xC074 255} {expect tall [rd 0xC073] 121}
-case big_boy_exits EndingTick {wr 0xC000 5; wr 0xC06E 1; wr 0xC06F 69; wr 0xC070 0; wr 0xC071 20; wr 0xC072 254; wr 0xC073 254; wr 0xC074 255} {expect big [rd 0xC074] 113}
+case small_boy_exits EndingTick {wr 0xC000 5; wr 0xC06E 1; wr 0xC06F 19; wr 0xC070 0; wr 0xC071 20; wr 0xC072 255; wr 0xC073 255; wr 0xC074 255} {expect small [rd 0xC072] 112; expect tall_waits [rd 0xC073] 255}
+case tall_boy_exits EndingTick {wr 0xC000 5; wr 0xC06E 1; wr 0xC06F 44; wr 0xC070 0; wr 0xC071 20; wr 0xC072 254; wr 0xC073 255; wr 0xC074 255} {expect tall [rd 0xC073] 120}
+case big_boy_exits EndingTick {wr 0xC000 5; wr 0xC06E 1; wr 0xC06F 69; wr 0xC070 0; wr 0xC071 20; wr 0xC072 254; wr 0xC073 254; wr 0xC074 255} {expect big [rd 0xC074] 112}
 case bus_is_clipped DrawBusRoad {wr 0xC071 30} {
     expect destination [debug read VRAM [expr {0x1800+11*32+30}]] 78
     expect no_wrap [debug read VRAM [expr {0x1800+12*32}]] 157
 }
-case boys_board_the_bus EndingTick {wr 0xC000 5; wr 0xC06E 1; wr 0xC06F 200; wr 0xC070 0; wr 0xC071 33; wr 0xC072 254; wr 0xC073 254; wr 0xC074 254} {expect boarded [rd 0xC06E] 2; expect pause [rd 0xC063] 80}
-case ending_reaches_credits EndingTick {wr 0xC000 5; wr 0xC06E 2; wr 0xC063 1; wr 0xC064 0} {
+case boys_board_the_bus EndingTick {wr 0xC000 5; wr 0xC06E 5; wr 0xC06F 200; wr 0xC070 0; wr 0xC071 33; wr 0xC072 254; wr 0xC073 254; wr 0xC074 254} {expect boarded [rd 0xC06E] 2; expect pause [rd 0xC063] 80}
+case ending_reaches_first_art EndingTick {wr 0xC000 5; wr 0xC06E 2; wr 0xC063 1; wr 0xC064 0} {
+    set f [open resources/generated/ending1.bin rb]
+    fconfigure $f -translation binary
+    expect pixels [debug read_block VRAM 0 54272] [read $f]
+    close $f
+    expect image [rd 0xC000] 8
+    expect timer [rd 0xC063] 250
+    expect screen [rd 0xFCAF] 8
+}
+case first_art_holds EndingArtTick {wr 0xC000 8; wr 0xC063 2; wr 0xC064 0} {
+    expect image [rd 0xC000] 8; expect timer [rd 0xC063] 1
+}
+case first_art_to_second EndingArtTick {wr 0xC000 8; wr 0xC063 1; wr 0xC064 0} {
+    set f [open resources/generated/ending2.bin rb]
+    fconfigure $f -translation binary
+    expect pixels [debug read_block VRAM 0 54272] [read $f]
+    close $f
+    expect image [rd 0xC000] 9; expect timer [rd 0xC063] 250
+    expect screen [rd 0xFCAF] 8
+}
+case second_art_holds EndingArtTick {wr 0xC000 9; wr 0xC063 2; wr 0xC064 0} {
+    expect image [rd 0xC000] 9; expect timer [rd 0xC063] 1
+}
+case second_art_to_credits EndingArtTick {wr 0xC000 9; wr 0xC063 1; wr 0xC064 0} {
+    expect screen [rd 0xFCAF] 4
     expect credits [rd 0xC000] 6
-    expect names [debug read_block VRAM [expr {0x1800+5*32+4}] 24] "Argon, Gordinho (Leto) e"
-    expect author [debug read_block VRAM [expr {0x1800+14*32+7}] 17] "By Robson Velloso"
+    expect blank_heading [debug read_block VRAM [expr {0x1800+32+12}] 8] "        "
+    expect blank_names [debug read_block VRAM [expr {0x1800+5*32+4}] 24] [string repeat " " 24]
+    expect pointer [expr {[rd 0xC075]+256*[rd 0xC076]}] $::sym(CreditSequence)
 }
 case ending_sprite_budget BuildEndingSprites {wr 0xC000 5; wr 0xC061 0; wr 0xC005 136; wr 0xC072 120; wr 0xC073 140; wr 0xC074 160} {
     expect slots [rd 0xC040] 18
@@ -399,8 +424,8 @@ case cow_scroll_exact_step UpdateScroll {cow 112 16; wr 0xC016 7} {
 case cow_waits_between_scroll_steps UpdateScroll {cow 112 16; wr 0xC016 2} {expect y [rd 0xC022] 16}
 case cow_pauses_at_station UpdateScroll {cow 112 16; wr 0xC016 7; wr 0xC050 1} {expect y [rd 0xC022] 16}
 case cheese_header DrawHUD {wr 0xC058 0x12; wr 0xC050 1} {
-    expect label [debug read_block VRAM [expr {0x1800+32+18}] 8] "QUEIJOS "
-    expect count [debug read_block VRAM [expr {0x1800+32+26}] 2] "12"
+    expect label [debug read_block VRAM [expr {0x1800+32+22}] 8] "QUEIJOS "
+    expect count [debug read_block VRAM [expr {0x1800+32+30}] 2] "12"
 }
 case bonus_begins_without_awarding BeginCheeseBonus {wr 0xC058 3} {
     expect state [rd 0xC000] 7; expect waiting_cheeses [rd 0xC058] 3; expect score [bcd] 00000000
@@ -426,6 +451,48 @@ case warning_alternates UpdateFuelAlert {wr 0xC04E 15; wr 0xC087 1} {
     expect other_note [debug read {PSG regs} 4] 128; expect loud [debug read {PSG regs} 10] 15
 }
 case warning_preserves_pitch_during_gap UpdateFuelAlert {wr 0xC04E 15; wr 0xC052 10; wr 0xC087 1} {expect pitch [rd 0xC087] 1}
+case credit_first_character RevealCreditLetter {
+    wr 0xC075 [expr {$::sym(CreditSequence)&255}]; wr 0xC076 [expr {$::sym(CreditSequence)>>8}]
+    wr 0xC088 0; wr 0xC089 0; wr 0xC08A 0
+    debug write_block VRAM 0x182C [string repeat " " 8]
+} {
+    expect first [debug read_block VRAM 0x182C 8] "C       "
+    expect delay [rd 0xC08A] 1
+}
+case credit_letter_gap RevealCreditLetter {wr 0xC08A 1; wr 0xC075 10; wr 0xC076 192} {
+    expect pointer [rd 0xC075] 10; expect delay [rd 0xC08A] 0
+}
+case credit_new_line RevealCreditLetter {
+    set addr [expr {$::sym(CreditLines)-1}]
+    wr 0xC075 [expr {$addr&255}]; wr 0xC076 [expr {$addr>>8}]
+    wr 0xC088 1; wr 0xC089 24; wr 0xC08A 0
+    debug write_block VRAM 0x1885 [string repeat " " 24]
+} {expect first [debug read_block VRAM 0x1885 24] "E                       "}
+case boss_left_wall ClampCarToRoad {wr 0xC000 4; wr 0xC004 32} {expect x [rd 0xC004] 64; expect lives [rd 0xC006] 3}
+case boss_right_wall ClampCarToRoad {wr 0xC000 4; wr 0xC004 208} {expect x [rd 0xC004] 176; expect lives [rd 0xC006] 3}
+case no_start_prompt ResetGame {} {
+    expect no_prompt [debug read_block VRAM [expr {0x1800+21*32+4}] 24] [debug read_block memory [expr {$::sym(WorldMap1)+(138+19)*32+4}] 24]
+}
+case stubborn_cow_ignores_horn ScareCowsAhead {cow 100 80; wr 0xC025 1} {
+    expect parked [rd 0xC024] 0; expect score [bcd] 00000000
+}
+case third_cow_hears_horn ScareCowsAhead {
+    foreach {a v} {0xC030 1 0xC031 100 0xC032 80 0xC034 0 0xC035 0} {wr $a $v}
+} {expect leaving [rd 0xC034] 1}
+case boss_blink_ends_in_escape BossDefeatTick {wr 0xC000 4; wr 0xC090 1; wr 0xC06D 1} {
+    expect escaping [rd 0xC090] 2; expect still_boss [rd 0xC000] 4
+}
+case boss_runs_away BossDefeatTick {wr 0xC000 4; wr 0xC090 2; wr 0xC066 180} {expect x [rd 0xC066] 182}
+case boss_leaves_before_bonus BossDefeatTick {wr 0xC000 4; wr 0xC090 2; wr 0xC066 238; wr 0xC060 3} {expect bonus [rd 0xC000] 7}
+case boys_wait_outside EndingTick {wr 0xC000 5; wr 0xC06E 3; wr 0xC063 50; wr 0xC064 0; wr 0xC072 112; wr 0xC071 248} {
+    expect boy [rd 0xC072] 112; expect bus_offscreen [rd 0xC071] 248; expect pause [rd 0xC063] 49
+}
+case bus_enters_from_left EndingTick {wr 0xC000 5; wr 0xC06E 4; wr 0xC071 255; wr 0xC001 0; wr 0xC072 112; wr 0xC073 120; wr 0xC074 112} {
+    expect left [rd 0xC071] 0; expect waiting [rd 0xC072] 112
+}
+case boys_chase_passing_bus EndingTick {wr 0xC000 5; wr 0xC06E 4; wr 0xC071 18; wr 0xC001 1; wr 0xC072 112; wr 0xC073 120; wr 0xC074 112} {
+    expect running [rd 0xC06E] 5; expect boy [rd 0xC072] 113
+}
 set index -1
 set failures 0
 set reports {}

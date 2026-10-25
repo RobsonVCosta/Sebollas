@@ -44,13 +44,14 @@ BeginStage:
     ld (_driveStarted),a
     ld (_driveArmed),a
     ld (_caneActive),a
+    ld (_cowSerial),a
     ld (_effectTime),a
     ld (_effectTime+1),a
     ld (_effectTime+2),a
     ld hl,_cows
     ld de,_cows+1
     ld (hl),a
-    ld bc,15
+    ld bc,23
     ldir
     ld a,1
     ld (_state),a
@@ -81,12 +82,6 @@ BeginStage:
     call FILVRM
     call DrawWorld
     call DrawHUD
-    ld a,(_driveStarted)
-    or a
-    jr nz,.sprites
-    ld de,DrivePrompt
-    ld bc,1504h
-    call PutText
 .sprites:
     call BuildSprites
     jp UploadSprites

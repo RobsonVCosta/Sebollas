@@ -119,7 +119,7 @@ class Assets(unittest.TestCase):
         import json
         credits=json.loads((ROOT/'resources/generated/credits_text.json').read_text())
         self.assertEqual(credits['paragraphs'],[
-            'Essa foi a aventura de Argon, Gordinho (Leto) e Robson em sua jornada de Nova Iguaçu até o Sebollas.',
+            'Essa foi a aventura de Argon, Gordinho (Leto) e Robson em sua jornada de Nova Iguaçu até Sebollas.',
             'Obrigado amigos, pelas boas memórias.',
             'By Robson Velloso'])
         self.assertTrue(all(0<=y<24 and x+len(line)<=32 for y,x,line in credits['rows']))
@@ -137,13 +137,51 @@ class Assets(unittest.TestCase):
                           max(y for x,y in pixels)-min(y for x,y in pixels)+1)
         self.assertGreater(bounds['runner_tall'][1],bounds['runner_small'][1])
         self.assertGreater(bounds['runner_fat'][0],bounds['runner_tall'][0])
+    def test_road_bounds_match_the_drivable_tiles(self):
+        bounds=(ROOT/'resources/generated/road_bounds.bin').read_bytes()
+        self.assertEqual(len(bounds),320)
+        for row in range(160):
+            left,right=bounds[row*2:row*2+2]
+            self.assertLessEqual(left,right)
+            self.assertTrue(all(a.WORLD[row*32+col] in (130,131,146,157)
+                                for col in range(left//8,(right+15)//8+1)))
+        for row in range(139):
+            for y in range(32,145):
+                spans=[bounds[r*2:r*2+2] for r in range(row+y//8-2,row+(y+31)//8-1)]
+                self.assertLessEqual(max(s[0] for s in spans),min(s[1] for s in spans))
+    def test_three_distinct_routes_and_fixed_cheese_color(self):
+        routes={stage:(ROOT/f'resources/generated/world{suffix}.bin').read_bytes()
+                for stage,suffix in ((1,'1'),(2,''),(3,'3'))}
+        centers=[(ROOT/f'resources/generated/road_centers{suffix}.bin').read_bytes()
+                 for suffix in ('1','','3')]
+        self.assertEqual(len(set(centers[0])),1)
+        self.assertGreater(len(set(centers[1])),5)
+        self.assertNotIn(145,routes[1]); self.assertNotIn(146,routes[1])
+        self.assertIn(145,routes[2]); self.assertIn(146,routes[2])
+        for row in range(20,148):
+            widths=[sum(t in (130,131,146) for t in routes[stage][row*32:row*32+32]) for stage in (1,3)]
+            self.assertLess(widths[1],widths[0])
+        for stage in range(3):
+            self.assertEqual(a.META['palettes'][stage][10],a.META['palettes'][0][10])
+    def test_ending_art_native_pixels_and_rom_banks(self):
+        from PIL import Image
+        rom=(ROOT/'Sebollas.rom').read_bytes()
+        for number,offset in ((1,0x10000),(2,0x20000)):
+            source=Image.open(ROOT/f'resources/ending-{number}-reference.png').convert('RGB')
+            self.assertEqual(source.size,(256,212))
+            expected=bytes((round(g*7/255)<<5)|(round(r*7/255)<<2)|round(b*3/255)
+                           for r,g,b in source.getdata())
+            data=(ROOT/f'resources/generated/ending{number}.bin').read_bytes()
+            self.assertEqual(len(data),54272)
+            self.assertEqual(data,expected)
+            self.assertEqual(rom[offset:offset+len(data)],data)
     def test_previews_and_cartridge(self):
         for i in range(3):
             im=a.render(i)
             self.assertEqual(im.size,(256,192))
             self.assertLessEqual(len(im.getcolors()),16)
         rom=(ROOT/'Sebollas.rom').read_bytes()
-        self.assertEqual(len(rom),65536)
+        self.assertEqual(len(rom),262144)
         self.assertEqual(rom[:2],b'AB')
         entry=int.from_bytes(rom[2:4],'little')
         self.assertTrue(0x4010<=entry<0x8000)

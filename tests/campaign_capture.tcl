@@ -15,7 +15,11 @@ proc draw_checkpoint {routines} {
             debug write memory $cursor $byte; incr cursor
         }
     }
-    foreach byte {195 240 207} {debug write memory $cursor $byte; incr cursor}
+    set tail {195 240 207}
+    if {$routines eq {ShowCredits}} {
+        set tail [list 251 195 [expr {$::sym(MainLoop)&255}] [expr {$::sym(MainLoop)>>8}]]
+    }
+    foreach byte $tail {debug write memory $cursor $byte; incr cursor}
     foreach {addr val} {0xCFF0 118 0xCFF1 24 0xCFF2 253} {debug write memory $addr $val}
     reg SP 0xCE80
     reg PC 0xCEC0
@@ -37,13 +41,13 @@ after time 9 {
 }
 after time 9.6 {screenshot -raw previews/onibus-openmsx-raw.png}
 after time 10 {draw_checkpoint {ShowCredits}}
-after time 10.6 {screenshot -raw previews/creditos-openmsx-raw.png}
-after time 11 {
+after time 18.6 {screenshot -raw previews/creditos-openmsx-raw.png}
+after time 19 {
     foreach {addr val} {0xC060 1 0xC058 9 0xC008 0 0xC009 0 0xC00A 0x10 0xC00B 0} {debug write memory $addr $val}
     draw_checkpoint {SetupGameVideo ApplyStagePalette BeginCheeseBonus}
 }
-after time 11.6 {screenshot -raw previews/bonus-inicio-openmsx-raw.png}
-after time 11.8 {reg SP 0xF380; reg PC $::sym(MainLoop)}
-after time 12.7 {screenshot -raw previews/bonus-openmsx-raw.png}
-after time 13 {exit}
+after time 19.6 {screenshot -raw previews/bonus-inicio-openmsx-raw.png}
+after time 19.8 {reg IFF 1; reg SP 0xF380; reg PC $::sym(MainLoop)}
+after time 20.7 {screenshot -raw previews/bonus-openmsx-raw.png}
+after time 21 {exit}
 set power true

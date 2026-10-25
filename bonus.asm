@@ -21,6 +21,7 @@ BeginCheeseBonus:
     ld (_cheese),a
     ld (_cows),a
     ld (_cows+8),a
+    ld (_cows+16),a
     ld (_caneActive),a
     ld (_bonusDone),a
     ld (_bonusSoundStep),a
