@@ -163,6 +163,11 @@ class Assets(unittest.TestCase):
             bundle=(data/f'route{stage}.bin').read_bytes()
             self.assertEqual(len(bundle),5600)
             self.assertEqual(bundle[:5120],world)
+        self.assertEqual(sum(t in (130,131) for t in (data/'world0.bin').read_bytes()[20*32:21*32]),14)
+        self.assertEqual(sum(t in (130,131) for t in (data/'world1.bin').read_bytes()[20*32:21*32]),10)
+        self.assertEqual(len((data/'small_cow_patterns.bin').read_bytes()),128)
+        self.assertEqual(len((data/'small_cow_colors.bin').read_bytes()),64)
+        self.assertTrue(any((data/'patterns.bin').read_bytes()[47*8:48*8]))
         self.assertEqual(len((data/'trio_patterns.bin').read_bytes()),256)
         self.assertEqual(len((data/'trio_colors.bin').read_bytes()),128)
         for stage in range(3):

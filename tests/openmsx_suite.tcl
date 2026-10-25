@@ -21,7 +21,7 @@ proc prepare {} {
     close $f
     debug write memory 0x7000 2
     debug write memory 0x7800 3
-    foreach {a v} {0xC000 1 0xC004 120 0xC005 128 0xC006 5 0xC007 0 0xC015 0 0xC018 64 0xC017 138 0xC04E 100 0xC04F 0 0xC050 0 0xC052 0 0xC053 0 0xC054 0 0xC055 0 0xC056 0 0xC057 48 0xC058 0 0xC01C 0 0xC01D 0 0xC01E 0 0xC059 0 0xC05A 0 0xC05B 0 0xC05C 0 0xC05D 0 0xC05E 0 0xC060 2 0xC061 1 0xC062 1 0xC063 0 0xC064 0 0xC065 12 0xC066 120 0xC067 0 0xC068 24 0xC069 0 0xC06A 0 0xC06B 0 0xC06C 120 0xC06D 0 0xC077 0 0xC078 0 0xC079 0 0xC07A 0 0xC084 0 0xC085 0 0xC086 0 0xC087 0 0xC08F 0 0xC090 0 0xC099 0} {wr $a $v}
+    foreach {a v} {0xC000 1 0xC004 120 0xC005 128 0xC006 5 0xC007 0 0xC015 0 0xC018 64 0xC017 138 0xC04E 100 0xC04F 0 0xC050 0 0xC052 0 0xC053 0 0xC054 0 0xC055 0 0xC056 0 0xC057 48 0xC058 0 0xC01C 0 0xC01D 0 0xC01E 0 0xC059 0 0xC05A 0 0xC05B 0 0xC05C 0 0xC05D 0 0xC05E 0 0xC060 2 0xC061 1 0xC062 1 0xC063 0 0xC064 0 0xC065 12 0xC066 120 0xC067 0 0xC068 24 0xC069 0 0xC06A 0 0xC06B 0 0xC06C 120 0xC06D 0 0xC077 0 0xC078 0 0xC079 0 0xC07A 0 0xC084 0 0xC085 0 0xC086 0 0xC087 0 0xC08F 0 0xC090 0 0xC099 0 0xC09A 0 0xC09E 0 0xC0AC 0} {wr $a $v}
     for {set a 0xC008} {$a<0xC00C} {incr a} {wr $a 0}
     for {set a 0xC020} {$a<0xC038} {incr a} {wr $a 0}
 }
@@ -56,8 +56,8 @@ foreach {name mask dx dy} {up 32 0 -1 upright 160 2 -1 right 128 2 0 downright 1
 case clamp_top_right MovePlayer {wr 0xC004 208; wr 0xC005 32; keymatrixdown 8 160} {
     expect x [rd 0xC004] 128; expect y [rd 0xC005] 32
 }
-case clamp_bottom_left MovePlayer {wr 0xC004 32; wr 0xC005 144; keymatrixdown 8 80} {
-    expect x [rd 0xC004] 72; expect y [rd 0xC005] 144
+case clamp_bottom_left MovePlayer {wr 0xC004 32; wr 0xC005 152; keymatrixdown 8 80} {
+    expect x [rd 0xC004] 72; expect y [rd 0xC005] 152
 }
 case horn_scares ScareCowsAhead {cow 100 80} {
     expect scared [rd 0xC024] 1
@@ -526,7 +526,7 @@ case battle_music_starts UpdateMusic {wr 0xC000 4} {
     expect quicker_notes [rd 0xC05C] 6
 }
 case bar_route_has_no_boss CompleteStage {wr 0xC060 2} {expect arrival [rd 0xC000] 11}
-case fishing_meets_peaceful_garapa CompleteStage {wr 0xC060 0} {expect meeting [rd 0xC000] 11; expect no_projectile [rd 0xC069] 0}
+case fishing_meets_peaceful_garapa CompleteStage {wr 0xC060 0; wr 0xC017 0; wr 0xC005 96} {expect meeting [rd 0xC000] 11; expect no_projectile [rd 0xC069] 0}
 case cheese_boss_uploads_shared_patterns LoadBossArt {wr 0xC060 3} {
     set f [open resources/generated/cheese_boss_patterns.bin rb]; fconfigure $f -translation binary
     expect boss_pixels [debug read_block VRAM [expr {0x3800+$::sym(BOSS_PATTERN)*8}] 256] [read $f]; close $f
@@ -596,7 +596,7 @@ case five_hearts_fill_hud DrawHUD {} {expect hearts [debug read_block VRAM 0x181
 case fishing_has_no_horn SoundHorn {wr 0xC060 0} {expect quiet [rd 0xC059] 0}
 case walking_has_no_horn UpdateHornInput {wr 0xC060 1; keymatrixdown 8 1} {expect quiet [rd 0xC059] 0}
 case fishing_hud_is_hunger DrawFuel {wr 0xC060 0} {expect label [debug read_block VRAM 0x1821 4] "FOME"}
-case cane_counter_label DrawCheeseHUD {wr 0xC060 1} {expect label [debug read_block VRAM 0x1836 8] "CANAS   "}
+case cane_counter_label DrawCheeseHUD {wr 0xC060 1} {expect label [debug read_block VRAM 0x1833 13] "CANAS 000/100"}
 case walking_uploads_trio LoadWalkingArt {wr 0xC060 0} {
     set f [open resources/generated/trio_patterns.bin rb]; fconfigure $f -translation binary
     expect pixels [debug read_block VRAM 0x3800 256] [read $f]; close $f
@@ -612,7 +612,7 @@ case cow_chase_expires UpdateWalkingCows {
     wr 0xC09B [expr {$start&255}]; wr 0xC09C [expr {$start>>8}]
 } {expect stopped [rd 0xC026] 0}
 case cow_does_not_restart_chase UpdateWalkingCows {wr 0xC060 0; cow 112 112; wr 0xC026 0; wr 0xC027 1; wr 0xC001 0} {expect stopped [rd 0xC026] 0; expect crossing [rd 0xC021] 113}
-case chasing_cow_tracks_screen UpdateScroll {wr 0xC060 0; cow 112 100; wr 0xC026 100; wr 0xC016 7} {expect y [rd 0xC022] 100}
+case chasing_cow_tracks_screen UpdateScroll {wr 0xC060 0; cow 112 100; wr 0xC026 100; wr 0xC016 15} {expect y [rd 0xC022] 100}
 case cane_challenge_is_non_damaging CompleteStage {wr 0xC060 1} {
     expect challenge [rd 0xC000] 12; expect hp [rd 0xC065] 0
     expect question [debug read_block VRAM [expr {0x1800+3*32+6}] 19] "Voc[format %c 243]s tomam garapa?"
@@ -626,9 +626,9 @@ case walking_deck_graphics DrawArenaStation {wr 0xC060 1} {
     expect wood [debug read VRAM [expr {0x1800+14*32+24}]] 159
 }
 case peaceful_meeting_advances MeetingTick {wr 0xC000 11; wr 0xC060 0; wr 0xC063 1; wr 0xC064 0} {expect next [rd 0xC060] 1; expect card [rd 0xC000] 3}
-case cane_challenge_ends_without_attack CaneChallengeTick {wr 0xC000 12; wr 0xC060 1; wr 0xC063 1; wr 0xC064 0} {expect bonus [rd 0xC000] 7; expect no_damage [rd 0xC065] 12}
-case cane_is_occluded_by_full_foreground BuildBossSprites {wr 0xC000 12; wr 0xC060 1; cow 112 100; wr 0xC004 112; wr 0xC005 128; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 128} {expect slots [rd 0xC040] 24}
-case cane_is_visible_with_scanline_space BuildBossSprites {wr 0xC000 12; wr 0xC060 1; cow 112 100; wr 0xC004 112; wr 0xC005 128; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 96} {expect slots [rd 0xC040] 25}
+case cane_challenge_ends_without_attack CaneChallengeTick {wr 0xC000 12; wr 0xC060 1; wr 0xC09A 100; wr 0xC063 1; wr 0xC064 0} {expect bonus [rd 0xC000] 7; expect no_damage [rd 0xC065] 12}
+case cane_remains_visible_with_compact_cow BuildBossSprites {wr 0xC000 12; wr 0xC060 1; cow 112 100; wr 0xC004 112; wr 0xC005 128; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 128} {expect slots [rd 0xC040] 19}
+case cane_is_visible_with_scanline_space BuildBossSprites {wr 0xC000 12; wr 0xC060 1; cow 112 100; wr 0xC004 112; wr 0xC005 128; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 96} {expect slots [rd 0xC040] 19}
 case bar_arrival_goes_to_bonus MeetingTick {wr 0xC000 11; wr 0xC060 2; wr 0xC063 1; wr 0xC064 0} {expect bonus [rd 0xC000] 7}
 case fishing_starts_in_unnamed_house LoadStageMap {wr 0xC060 0} {
     expect house [rd [expr {0xD000+148*32+1}]] 148
@@ -638,6 +638,43 @@ case final_stage_is_cheese_fight CompleteStage {wr 0xC060 3} {expect boss [rd 0x
 case question_mark_is_uploaded LoadGraphics {} {
     set expected [debug read_block memory $::sym(QuestionMarkGlyph) 8]
     foreach bank {0 2048 4096} {expect glyph [debug read_block VRAM [expr {$bank+63*8}] 8] $expected}
+}
+case walking_can_descend_further MovePlayer {wr 0xC060 0; wr 0xC005 150; keymatrixdown 8 64} {expect y [rd 0xC005] 152}
+case walking_scroll_is_slower UpdateScroll {wr 0xC060 0; wr 0xC016 7} {expect row [rd 0xC017] 138; expect clock [rd 0xC016] 8}
+case second_walking_scroll_is_slower UpdateScroll {wr 0xC060 1; wr 0xC016 15} {expect row [rd 0xC017] 137}
+case fishing_needs_contact CompleteStage {wr 0xC060 0; wr 0xC017 0; wr 0xC005 152} {expect playing [rd 0xC000] 1}
+case garapa_enters_with_scroll RoadGarapaPosition {wr 0xC060 0; wr 0xC017 10} {expect top [rd 0xC09D] 16}
+case garapa_follows_scroll RoadGarapaPosition {wr 0xC060 0; wr 0xC017 9} {expect y [rd 0xC09D] 24}
+case garapa_waits_at_destination RoadGarapaPosition {wr 0xC060 0; wr 0xC017 0} {expect y [rd 0xC09D] 96}
+case no_cane_timeout CaneChallengeTick {wr 0xC000 12; wr 0xC060 1; wr 0xC063 220; wr 0xC064 5; wr 0xC09A 99} {expect playing [rd 0xC000] 12; expect caught [rd 0xC09A] 99}
+case cane_goal_reaches_100 UpdateFriendlyCane {wr 0xC000 12; wr 0xC060 1; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 126; wr 0xC09A 99; wr 0xC058 153} {
+    expect caught [rd 0xC09A] 100; expect hundred [rd 0xC09E] 1
+    expect label [debug read_block VRAM 0x1833 13] "CANAS 100/100"
+}
+case hundred_canes_bonus CheeseBonusTick {wr 0xC000 7; wr 0xC060 1; wr 0xC09E 1; wr 0xC058 0; wr 0xC084 0; wr 0xC085 0} {
+    expect remaining [rd 0xC058] 153; expect hundred [rd 0xC09E] 0; expect score [bcd] 00000100
+}
+case herd_starts_with_one UpdateCaneHerd {wr 0xC000 12; wr 0xC060 1} {expect level [rd 0xC0AC] 1; expect cow1 [rd 0xC020] 1; expect cow2 [rd 0xC028] 0}
+case herd_adds_second_cow UpdateCaneHerd {wr 0xC000 12; wr 0xC060 1; wr 0xC063 232; wr 0xC064 3} {expect level [rd 0xC0AC] 2; expect cow2 [rd 0xC028] 1}
+case herd_adds_third_cow UpdateCaneHerd {wr 0xC000 12; wr 0xC060 1; wr 0xC063 208; wr 0xC064 7} {expect level [rd 0xC0AC] 3; expect cow3 [rd 0xC030] 1}
+case trio_heads_do_not_collide CheckHits {wr 0xC060 0; cow 112 100} {expect lives [rd 0xC006] 5}
+case trio_lower_body_collides CheckHits {wr 0xC060 0; cow 112 136} {expect lives [rd 0xC006] 4}
+case cheese_man_new_phrase BeginBoss {wr 0xC060 3} {expect phrase [debug read_block VRAM [expr {0x1800+3*32+5}] 23] "Experimentem meu queijo"}
+case third_arena_cow_can_hit CheckHits {wr 0xC000 12; wr 0xC060 1; wr 0xC030 1; wr 0xC031 128; wr 0xC032 144} {expect lives [rd 0xC006] 4}
+case new_herd_enters_far_side UpdateCaneHerd {wr 0xC000 12; wr 0xC060 1; wr 0xC004 216; wr 0xC063 208; wr 0xC064 7} {expect x [rd 0xC031] 48; expect toward_right [rd 0xC033] 0}
+case three_cows_preserve_sprite_budget BuildBossSprites {
+    wr 0xC000 12; wr 0xC060 1; cow 112 96
+    wr 0xC028 1; wr 0xC029 112; wr 0xC02A 128
+    wr 0xC030 1; wr 0xC031 112; wr 0xC032 160
+    wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 128
+} {
+    expect slots [rd 0xC040] 23
+    set counts [lrepeat 192 0]
+    for {set slot 0} {$slot<23} {incr slot} {
+        set y [expr {[rd [expr {0xC100+$slot*4}]]+1}]
+        for {set line $y} {$line<$y+16 && $line<192} {incr line} {lset counts $line [expr {[lindex $counts $line]+1}]}
+    }
+    expect per_line [lindex [lsort -integer $counts] end] 7
 }
 set index -1
 set failures 0

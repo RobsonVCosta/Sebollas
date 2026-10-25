@@ -334,7 +334,7 @@ MovePlayer:
     jr nz,.leftTest
 .down:
     ld a,(_carY)
-    cp 144
+    cp 152
     jr z,.leftTest
     inc a
     ld (_carY),a
@@ -342,7 +342,7 @@ MovePlayer:
     cp 2
     jr nc,.leftTest
     ld a,(_carY)
-    cp 144
+    cp 152
     jr z,.leftTest
     inc a
     ld (_carY),a
@@ -440,9 +440,15 @@ UpdateScroll:
     ld a,(_mapRow)
     or a
     ret z
+    ld a,(_stage)
+    cp 2
+    ld b,7
+    jr nc,.speed
+    ld b,15
+.speed:
     ld a,(_scrollClock)
     inc a
-    and 7
+    and b
     ld (_scrollClock),a
     ret nz
     ld a,(_mapRow)
@@ -620,12 +626,12 @@ CheckHits:
     ld ix,_cows+8
     ; Do not process a second collision after game-over.
     ld a,(_state)
-    cp 1
-    ret nz
+    cp 2
+    ret z
     call .cow
     ld a,(_state)
-    cp 1
-    ret nz
+    cp 2
+    ret z
     ld ix,_cows+16
 .cow:
     ld a,(ix+0)
@@ -634,14 +640,25 @@ CheckHits:
     ld a,(_invulnerable)
     or a
     ret nz
-    ; Car reduced box 12x24, cow reduced box 24x24.
-    ld a,(_stage)
-    cp 2
+    ; Walking collisions use the lower body, rather than the group's heads.
     ld b,10
     ld c,36
+    ld d,24
+    ld e,48
+    ld a,(_stage)
+    cp 2
     jr nc,.body
+    ld b,21
+    ld c,43
+    ld d,17
+    ld e,25
+    ld a,(_state)
+    cp 12
+    jr nz,.body
     ld b,23
-    ld c,47
+    ld c,31
+    ld d,23
+    ld e,17
 .body:
     ld a,(_carX)
     sub (ix+1)
@@ -650,8 +667,8 @@ CheckHits:
     ret nc
     ld a,(_carY)
     sub (ix+2)
-    add a,24
-    cp 48
+    add a,d
+    cp e
     ret nc
     jp LoseLife
 AddTen:
@@ -769,7 +786,17 @@ AppendSprite:
     jr nc,.motorColors
     ld a,d
     cp 8
+    jr c,.trioColors
+    ld a,(_state)
+    cp 12
+    jr nz,.colors
+    ld a,d
+    sub DUST_PATTERN/4
+    cp 4
     jr nc,.colors
+    ld bc,SmallCowColors-DUST_PATTERN*4
+    jr .colors
+.trioColors:
     ld bc,TrioColors
     jr .colors
 .motorColors:
@@ -887,13 +914,21 @@ BuildSprites:
     add a,DUST_PATTERN/4
     call AppendSprite
 .cows:
+    ld a,(_state)
+    cp 12
+    jr nz,.largeCows
+    call DrawChallengeCows
+    jr .items
+.largeCows:
     ld ix,_cows
     call DrawCow
     ld ix,_cows+8
     call DrawCow
     ld ix,_cows+16
     call DrawCow
-    jp DrawCheese
+.items:
+    call DrawCheese
+    jp DrawRoadGarapa
 DrawCow:
     ld a,(ix+0)
     or a
@@ -990,6 +1025,8 @@ EnemyCheeseColors: incbin "resources/generated/enemy_cheese_colors.bin"
 CheeseFightPalette: incbin "resources/generated/cheese_fight_palette.bin"
 TrioPatterns: incbin "resources/generated/trio_patterns.bin"
 TrioColors: incbin "resources/generated/trio_colors.bin"
+SmallCowPatterns: incbin "resources/generated/small_cow_patterns.bin"
+SmallCowColors: incbin "resources/generated/small_cow_colors.bin"
 GameDataEnd:
     ASSERT GameDataEnd <= 0C000h
     defs 0C000h-$,0FFh

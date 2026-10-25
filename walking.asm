@@ -24,6 +24,60 @@ GetCollectibleLabel:
     ld de,CaneLabel
     ret
 
+RoadGarapaPosition:
+    ld a,(_mapRow)
+    cp 11
+    ret nc
+    ld b,a
+    ld a,12
+    sub b
+    add a,a
+    add a,a
+    add a,a
+    ld (_roadGarapaY),a
+    ld a,12
+    call RoadCenter
+    sub 8
+    ld (_bossX),a
+    scf
+    ret
+DrawRoadGarapa:
+    ld a,(_stage)
+    or a
+    ret nz
+    ld a,(_state)
+    cp 1
+    jr z,.draw
+    cp 11
+    ret nz
+.draw:
+    call RoadGarapaPosition
+    ret nc
+    ld a,(_bossX)
+    ld (_bossSprite+1),a
+    ld a,(_roadGarapaY)
+    ld (_bossSprite+2),a
+    ld ix,_bossSprite
+    ld a,BOSS_PATTERN/4
+    jp DrawLargeSprite
+CheckGarapaContact:
+    call RoadGarapaPosition
+    ret nc
+    ld a,(_bossX)
+    ld b,a
+    ld a,(_carX)
+    sub b
+    add a,20
+    cp 41
+    ret nc
+    ld a,(_roadGarapaY)
+    ld b,a
+    ld a,(_carY)
+    sub b
+    add a,20
+    cp 41
+    ret nc
+    jp BeginGarapaMeeting
 BeginGarapaMeeting:
     ld a,11
     ld (_state),a
@@ -36,14 +90,10 @@ BeginGarapaMeeting:
     ld (_cows+16),a
     ld (_caneActive),a
     ld (_bossFlash),a
-    ld a,120
-    ld (_bossX),a
-    call LoadBossArt
-    call ClearArena
     ld de,GarapaText
     ld bc,0308h
     call PutText
-    call BuildBossSprites
+    call BuildSprites
     jp UploadSprites
 MeetingTick:
     ld hl,(_stageTimer)
@@ -60,10 +110,11 @@ MeetingTick:
 BeginCaneChallenge:
     ld a,12
     ld (_state),a
-    ld hl,1500 ; 30 seconds to catch as many canes as possible
+    ld hl,0 ; elapsed time controls herd growth; there is no time limit
     ld (_stageTimer),hl
     xor a
     ld (_caneTotal),a
+    ld (_caneHundred),a
     ld (_caneActive),a
     ld (_cows),a
     ld (_cows+8),a
@@ -73,6 +124,7 @@ BeginCaneChallenge:
     ld (_bossDirection),a
     ld a,1
     ld (_driveStarted),a
+    ld (_herdLevel),a
     ld a,20
     ld (_throwClock),a
     ld (_spawnClock),a
@@ -82,7 +134,12 @@ BeginCaneChallenge:
     ld (_carX),a
     ld a,136
     ld (_carY),a
+    ld a,5
+    ld (_lives),a
+    xor a
+    ld (_invulnerable),a
     call LoadBossArt
+    call LoadSmallCowArt
     call ClearArena
     call DrawArenaStation
     ld de,GarapaQuestion
@@ -92,6 +149,18 @@ BeginCaneChallenge:
     call BuildBossSprites
     jp UploadSprites
 CaneChallengeTick:
+    ld a,(_caneTotal)
+    cp 100
+    jr c,.playing
+    ld hl,(_stageTimer)
+    dec hl
+    ld (_stageTimer),hl
+    ld a,h
+    or l
+    jp z,BeginCheeseBonus
+    call BuildBossSprites
+    jp UploadSprites
+.playing:
     call MovePlayer
     call UpdateBossFuel
     ld a,(_state)
@@ -103,6 +172,9 @@ CaneChallengeTick:
     cp 12
     ret nz
     call UpdateFriendlyCane
+    ld a,(_caneTotal)
+    cp 100
+    jr nc,.render
     ld a,(_tick)
     and 3
     jr nz,.timer
@@ -129,11 +201,13 @@ CaneChallengeTick:
     call DrawHUD
 .timer:
     ld hl,(_stageTimer)
-    dec hl
-    ld (_stageTimer),hl
     ld a,h
-    or l
-    jp z,BeginCheeseBonus
+    and l
+    cp 255
+    jr z,.render
+    inc hl
+    ld (_stageTimer),hl
+.render:
     call BuildBossSprites
     jp UploadSprites
 
@@ -165,24 +239,35 @@ UpdateFriendlyCane:
     ld b,a
     ld a,(_caneX)
     sub b
-    add a,12
-    cp 48
+    add a,8
+    cp 40
     ret nc
     ld a,(_carY)
     ld b,a
     ld a,(_caneY)
     sub b
-    add a,12
-    cp 44
+    add a,4
+    cp 36
     ret nc
+    ld a,(_caneTotal)
+    cp 100
+    jr nc,.remove
+    inc a
+    ld (_caneTotal),a
+    cp 100
+    jr nz,.count
+    ld a,1
+    ld (_caneHundred),a
+    xor a
+    ld (_cheeseCount),a
+    ld hl,50
+    ld (_stageTimer),hl
+    jr .sound
+.count:
     ld a,(_cheeseCount)
-    cp 099h
-    jr z,.sound
     add a,1
     daa
     ld (_cheeseCount),a
-    ld hl,_caneTotal
-    inc (hl)
 .sound:
     call SoundCollect
     call DrawCheeseHUD
@@ -193,20 +278,17 @@ UpdateFriendlyCane:
     ld (_throwClock),a
     ret
 
-DrawCaneTimer:
-    ld de,TimeLabel
-    ld bc,0011h
+DrawCaneObjective:
+    ld de,CaneGoalLabel
+    ld bc,0113h
     call PutText
-    ld hl,(_stageTimer)
-    ld bc,50
-    xor a
-.seconds:
-    or a
-    sbc hl,bc
-    jr c,.decimal
-    inc a
-    jr .seconds
-.decimal:
+    ld a,(_caneTotal)
+    cp 100
+    jr c,.belowHundred
+    ld a,'1'
+    ld hl,NAMTBL+32+25
+    jp WRTVRM
+.belowHundred:
     ld b,'0'
 .tens:
     cp 10
@@ -217,16 +299,36 @@ DrawCaneTimer:
 .digits:
     push af
     ld a,b
-    ld hl,NAMTBL+20
+    ld hl,NAMTBL+32+26
     call WRTVRM
     pop af
     add a,'0'
-    ld hl,NAMTBL+21
+    ld hl,NAMTBL+32+27
     jp WRTVRM
+CaneGoalLabel: db "CANAS 000/100",0
 
 ; A single crossing cow avoids overlapping two 32px cows with the wide trio.
-; Per-record bytes 6/7 are the 250-tick chase and the once-only trigger.
+; Bytes 6/7 mark a chase and its once-only trigger; BIOS time controls expiry.
 UpdateWalkingCows:
+    ld a,(_state)
+    cp 12
+    jp z,UpdateCaneHerd
+    ld hl,_cowChaseStart
+    ld (_cowTimePtr),hl
+    xor a
+    ld (_cowLaneMin),a
+    ld a,160
+    ld (_cowLaneMax),a
+    ld a,(_stage)
+    or a
+    jr nz,.walking
+    ld a,(_mapRow)
+    cp 11
+    jr nc,.walking
+    xor a
+    ld (_cows),a
+    ret
+.walking:
     ld a,(_driveStarted)
     or a
     ret z
@@ -273,29 +375,38 @@ UpdateWalkingCows:
     ld (ix+1),a
     ret
 .move:
+MoveWalkingCow:
     ld a,(ix+6)
     or a
     jr nz,.chase
     ld a,(ix+7)
     or a
-    jr nz,.cross
+    jp nz,.cross
     ld a,(_carX)
     sub (ix+1)
     add a,48
     cp 97
-    jr nc,.cross
+    jp nc,.cross
     ld a,(_carY)
     sub (ix+2)
     add a,48
     cp 97
-    jr nc,.cross
+    jp nc,.cross
     ld (ix+6),250
     ld (ix+7),1
     ld hl,(JIFFY)
-    ld (_cowChaseStart),hl
+    ld de,(_cowTimePtr)
+    ld a,l
+    ld (de),a
+    inc de
+    ld a,h
+    ld (de),a
 .chase:
+    ld hl,(_cowTimePtr)
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
     ld hl,(JIFFY)
-    ld de,(_cowChaseStart)
     or a
     sbc hl,de
     ld de,250
@@ -317,7 +428,14 @@ UpdateWalkingCows:
     ld a,(_tick)
     and 1
     ret nz
+    ld a,(_state)
+    cp 12
+    ld b,0
+    jr nz,.targetX
+    ld b,8
+.targetX:
     ld a,(_carX)
+    add a,b
     cp (ix+1)
     jr z,.y
     jr c,.chaseLeft
@@ -329,7 +447,23 @@ UpdateWalkingCows:
     ld a,(_tick)
     and 3
     ret nz
+    ld a,(_state)
+    cp 12
+    ld b,0
+    jr nz,.targetY
+    ld b,16
+.targetY:
     ld a,(_carY)
+    add a,b
+    ld b,a
+    ld a,(_cowLaneMin)
+    cp b
+    jr nc,.limitY
+    ld a,(_cowLaneMax)
+    cp b
+    jr c,.limitY
+    ld a,b
+.limitY:
     cp (ix+2)
     ret z
     jr c,.chaseUp
@@ -345,7 +479,7 @@ UpdateWalkingCows:
     ld a,(ix+3)
     or a
     ld a,(ix+1)
-    jr nz,.crossLeft
+    jp nz,.crossLeft
     inc a
     cp 224
     jr nc,.exit
@@ -358,65 +492,104 @@ UpdateWalkingCows:
     ret
 .exit:
     ld (ix+0),0
+    ld (ix+4),40
     ret
 
-; A cane is temporarily occluded when the existing foreground fills all eight
-; hardware slots on a scanline. Pickup logic remains independent of rendering.
+; Compact cows occupy separate vertical lanes, keeping the cane visible.
 AppendWalkingCane:
-    push af
-    push bc
-    push de
-    ld a,(_cows)
+    jp AppendSprite ; lane-separated arena cows leave room for the cane
+
+LoadSmallCowArt:
+    ld hl,SmallCowPatterns
+    ld de,SPTPAT+DUST_PATTERN*8
+    ld bc,128
+    jp LDIRVM
+DrawChallengeCows:
+    ld ix,_cows
+    call .cow
+    ld ix,_cows+8
+    call .cow
+    ld ix,_cows+16
+.cow:
+    ld a,(ix+0)
     or a
-    jr z,.visible
-    ; Intersection of the cane's 16 rows and the cow's 32 rows.
-    ld a,(_cows+2)
-    ld b,a
-    ld a,d
-    cp b
-    jr nc,.start
-    ld a,b
-.start:
-    ld b,a
-    ld a,(_cows+2)
-    add a,32
-    ld c,a
-    ld a,d
-    add a,16
-    cp c
-    jr c,.end
-    ld a,c
-.end:
-    ld c,a
-    ld a,b
-    cp c
-    jr nc,.visible
-    ; Eight existing entries means the cow overlaps either 32px actor here.
-    ld a,(_carY)
-    cp c
-    jr nc,.boss
-    add a,32
-    cp b
-    jr c,.boss
-    jr z,.boss
-    jr .hidden
-.boss:
-    ld a,c
-    cp 41
-    jr c,.visible
-    ld a,b
-    cp 72
-    jr nc,.visible
-.hidden:
-    pop de
-    pop bc
-    pop af
-    ret
-.visible:
-    pop de
-    pop bc
-    pop af
+    ret z
+    ld d,(ix+2)
+    ld e,(ix+1)
+    ld a,(ix+3)
+    add a,a
+    add a,DUST_PATTERN/4
+    call AppendSprite
+    inc a
     jp AppendSprite
+
+UpdateCaneHerd:
+    ld a,1
+    ld (_herdLevel),a
+    ld hl,(_stageTimer)
+    ld de,1000
+    or a
+    sbc hl,de
+    jr c,.update
+    ld a,2
+    ld (_herdLevel),a
+    or a
+    sbc hl,de
+    jr c,.update
+    ld a,3
+    ld (_herdLevel),a
+.update:
+    ld ix,_cows
+    ld a,80
+    ld hl,_cowChaseStart
+    call .lane
+    ld a,(_herdLevel)
+    cp 2
+    ret c
+    ld ix,_cows+8
+    ld a,112
+    ld hl,_cowChaseStart2
+    call .lane
+    ld a,(_herdLevel)
+    cp 3
+    ret c
+    ld ix,_cows+16
+    ld a,144
+    ld hl,_cowChaseStart3
+.lane:
+    ld (_cowTimePtr),hl
+    ld (_cowLaneMin),a
+    add a,16
+    ld (_cowLaneMax),a
+    ld a,(ix+0)
+    or a
+    jp nz,MoveWalkingCow
+    ld a,(ix+4)
+    or a
+    jr z,.spawn
+    dec (ix+4)
+    ret
+.spawn:
+    ld (ix+0),1
+    ld (ix+6),0
+    ld (ix+7),0
+    ld a,(_cowLaneMin)
+    ld (ix+2),a
+    ; Enter from the far side, never materialize on top of the trio/deck.
+    ld a,(_carX)
+    cp 136
+    ld a,0
+    jr nc,.direction
+    inc a
+.direction:
+    ld (ix+3),a
+    or a
+    ld a,48
+    jr z,.place
+    ld a,224
+.place:
+    ld (ix+1),a
+    ret
 
 FishingTitle: db "INDO PESCAR",0
 FishingSign: db "PESCA",0

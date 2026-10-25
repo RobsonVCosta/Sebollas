@@ -61,7 +61,7 @@ lower={
 'y':[0,0,0x63,0x63,0x3f,3,0x63,0x3e],
 'z':[0,0,0x7f,6,0x1c,0x30,0x7f,0]}
 for ch,rows in lower.items(): patterns[ord(ch)*8:ord(ch)*8+8]=bytes(rows)
-extras={40:[0x0e,0x18,0x30,0x30,0x30,0x18,0x0e,0],
+extras={47:[0x03,0x06,0x0c,0x18,0x30,0x60,0xc0,0],40:[0x0e,0x18,0x30,0x30,0x30,0x18,0x0e,0],
 41:[0x70,0x18,0x0c,0x0c,0x0c,0x18,0x70,0],
 44:[0,0,0,0,0,0x18,0x18,0x30],46:[0,0,0,0,0,0x18,0x18,0],
 240:[0,0x3e,0x63,0x60,0x63,0x3e,0x0c,0x18],
@@ -169,7 +169,8 @@ def make_route(stage):
                 left,right=8+shift+inset,23+shift-inset
         if stage==2 and 123<=y<=132: left,right=11+shift,20+shift
         if stage==3: left,right=12+shift,19+shift
-        if stage<2: left,right=11+shift,20+shift
+        if stage==1: left,right=11+shift,20+shift
+        if stage==0: left,right=9+shift,22+shift
         centers.append(((left+right)//2)*8)
         river=33<=y<=40 or 83<=y<=90
         row=[]
@@ -418,4 +419,21 @@ base=len(sprites)
 add_reference_person('trio-reference.png',(32,32),0,'trio-sprite')
 (OUT/'trio_patterns.bin').write_bytes(b''.join(p for p,c in sprites[base:]))
 (OUT/'trio_colors.bin').write_bytes(b''.join(c for p,c in sprites[base:]))
+del sprites[base:]
+
+# Compact arena cows reuse the four dust patterns in the walking encounter.
+base=len(sprites)
+for direction in (0,1):
+    source=Image.open(ROOT/'resources/cow-reference.png').convert('RGBA')
+    source=source.crop(source.getbbox()).resize((16,12),Image.NEAREST)
+    if direction: source=source.transpose(Image.FLIP_LEFT_RIGHT)
+    im=image(16,16)
+    for y in range(12):
+        for x in range(16):
+            r,g,b,alpha=source.getpixel((x,y))
+            if alpha: im.putpixel((x,y+2),9 if r>200 and g<200 else 15 if r>200 else 1)
+    add_mask(im,[{1,15}]*16,[6]*16)
+    add_mask(im,[{9,15}]*16,[0x40|9]*16)
+(OUT/'small_cow_patterns.bin').write_bytes(b''.join(p for p,c in sprites[base:]))
+(OUT/'small_cow_colors.bin').write_bytes(b''.join(c for p,c in sprites[base:]))
 del sprites[base:]

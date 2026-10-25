@@ -62,5 +62,5 @@ proc report_route {} {
     close $f
     exit
 }
-after time 60 {report_route}
+after time 90 {report_route}
 set power true

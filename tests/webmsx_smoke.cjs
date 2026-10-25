@@ -62,6 +62,8 @@ const rom = fs.readFileSync(path.join(root, 'Sebollas.rom'));
             assert.deepEqual(await memory(0x6000, 16), [...rom.subarray(0x2000, 0x2010)], 'fixed second code bank');
             assert.equal(await read(0xC061), 0, 'fishing waits for interaction');
             await shot('fishing-gameplay');
+            await page.keyboard.down('ArrowDown'); await frames(35); await page.keyboard.up('ArrowDown');
+            assert.equal(await read(0xC005), 152, 'player can descend to Y=152');
             await page.keyboard.down('Space'); await frames(3); await page.keyboard.up('Space');
             assert.equal(await read(0xC059), 0, 'no horn while walking');
             await write({[0xC020]: 1, [0xC021]: 112, [0xC022]: 110, [0xC023]: 0,
@@ -79,6 +81,13 @@ const rom = fs.readFileSync(path.join(root, 'Sebollas.rom'));
             assert.ok(await read(0xC04E) > 40, 'fishing restores hunger');
             await shot('fishing-deck');
             await endRoad();
+            await write({[0xC005]: 152}); await frames(5);
+            assert.equal(await read(0xC000), 1, 'destination requires touching the boy');
+            for (const [row, y] of [[10,16], [9,24], [4,64], [0,96]]) {
+                await write({[0xC017]: row, [0xC016]: 0}); await frames(2);
+                assert.equal(await read(0xC09D), y, 'boy follows the world scroll');
+            }
+            await write({[0xC004]: await read(0xC066), [0xC005]: 96});
             await wait(async () => await read(0xC000) === 11);
             assert.equal(await read(0xC069), 0, 'first garapa encounter is peaceful');
             await frames(5); await shot('peaceful-garapa');
@@ -96,7 +105,14 @@ const rom = fs.readFileSync(path.join(root, 'Sebollas.rom'));
             await frames(15);
             assert.ok(await read(0xC04E) > 30, 'fishing deck also works during cane collection');
             await shot('cane-fishing-deck');
-            await write({[0xC063]: 1, [0xC064]: 0});
+            await write({[0xC063]: 208, [0xC064]: 7}); await frames(5);
+            assert.equal(await read(0xC0AC), 3, 'herd grows to three cows');
+            await shot('cane-three-cows');
+            await write({[0xC09A]: 99, [0xC058]: 0x99, [0xC069]: 1, [0xC06A]: 120,
+                [0xC06B]: 126, [0xC004]: 112, [0xC005]: 128, [0xC020]: 0, [0xC028]: 0, [0xC030]: 0});
+            await frames(5);
+            assert.equal(await read(0xC09A), 100, '100th cane completes the objective');
+            await shot('cane-goal-complete');
             await wait(async () => await read(0xC000) === 7);
             await intro(2);
             await shot('car-to-bar');

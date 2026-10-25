@@ -101,6 +101,8 @@ DrawCheeseHUD:
     ld a,(_stage)
     or a
     ret z
+    cp 1
+    jp z,DrawCaneObjective
     call GetCollectibleLabel
     ld bc,0116h
     call PutText

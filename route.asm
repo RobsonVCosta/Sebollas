@@ -94,6 +94,9 @@ UpdateJourney:
     jr z,.arrival
     ret
 .arrival:
+    ld a,(_stage)
+    or a
+    jp z,CheckGarapaContact
     ld a,(_mapRow)
     cp 4
     ret nc

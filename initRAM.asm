@@ -13,6 +13,8 @@ ResetGame:
     call SetupGameVideo
     xor a
     ld (_cheeseCount),a
+    ld (_caneTotal),a
+    ld (_caneHundred),a
     ld hl,_scoreBCD_8Digits
     ld b,4
 .score:

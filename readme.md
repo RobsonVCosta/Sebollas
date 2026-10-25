@@ -17,7 +17,7 @@ openmsx -machine C-BIOS_MSX2 -cart Sebollas.rom -romtype ASCII8
 | Espaço nas fases de carro | Buzina; afasta as vacas comuns e atinge o chefe final. |
 | Espaço/Enter em GAME OVER ou nos créditos | Retorna à abertura. Solte antes de iniciar novamente. |
 
-Há **cinco corações vermelhos**, juntos no canto superior direito. Cada fase começa com cinco vidas, e a luta final também restaura cinco. Uma batida retira uma vida e concede dois segundos de invulnerabilidade. Encostar na borda da estrada não tira vida. GAME OVER aparece no centro do gameplay.
+Há **cinco corações vermelhos**, juntos no canto superior direito. Cada fase começa com cinco vidas; o desafio das canas e a luta final também restauram cinco. Uma batida retira uma vida e concede dois segundos de invulnerabilidade. Encostar na borda da estrada não tira vida. GAME OVER aparece no centro do gameplay.
 
 As telas de nome duram dois segundos e são seguidas pela imagem da etapa por cinco segundos. Não há consumo nem obstáculos durante as imagens. A primeira etapa espera por uma seta ou um novo Espaço antes de começar a andar; as seguintes começam automaticamente.
 
@@ -25,8 +25,8 @@ As telas de nome duram dois segundos e são seguidas pela imagem da etapa por ci
 
 | Etapa | Personagem e objetivo |
 | --- | --- |
-| **Indo pescar** | O trio da referência sai de uma casa sem o nome Vavá. Segue por uma estrada sinuosa com pontes, desvia das vacas e recupera a barra FOME nos decks PESCA. Ao chegar, encontra o garoto da garapa, que não ataca. |
-| **Fase 1** | Continua a pé. No encontro com o garoto aparece **“Vocês tomam garapa?”**. Durante 30 segundos, pegue suas canas enquanto foge das vacas. As canas são coletáveis e não tiram vida; o trio não causa dano ao garoto. Os decks continuam disponíveis durante o encontro. |
+| **Indo pescar** | O trio da referência sai de uma casa sem o nome Vavá. Segue por uma estrada sinuosa com pontes, desvia das vacas e recupera a barra FOME nos decks PESCA. O garoto da garapa entra pelo topo e acompanha o scroll até o ponto de encontro. A etapa termina ao encostar nele; ele não ataca. A pista é mais larga nesta etapa. |
+| **Fase 1** | Continua a pé. No encontro com o garoto aparece **“Vocês tomam garapa?”**. Colete **100 canas** enquanto foge das vacas. A quantidade de vacas aumenta de uma para duas após 1000 ticks e para três após 2000 ticks de jogo, sem limite de tempo. As canas são coletáveis e não tiram vida; o trio não causa dano ao garoto. Os decks continuam disponíveis durante o encontro. |
 | **Fase 2** | Usa o Fusca, gasolina e postos. A estrada é sinuosa, com pontes, e termina em um **bar**, com uma pausa de chegada e bônus. Não há luta nessa etapa. |
 | **Fase final** | Mantém a estrada estreita, mais vacas e o homem do queijo. Ele lança queijos quadrados; desvie e acerte 12 buzinadas. Depois pisca e foge. |
 
@@ -61,11 +61,11 @@ make                  # monta a ROM e os símbolos
 make assets           # recria sprites, mapas e imagens de 256 cores
 make previews         # recria prévias estáticas
 make test             # montagem e 16 testes Python
-make test-emulator    # 212 rotinas Z80 e campanha completa em 50/60 Hz
+make test-emulator    # 231 rotinas Z80 e campanha completa em 50/60 Hz
 make captures         # capturas reais do V9938
 ```
 
-O teste de campanha usa somente teclado, sem modificar vida, barra, posição ou resistência do chefe. Confere as quatro etapas, coleta de canas durante os 1500 ticks, encontros pacíficos na pescaria e no bar, 12 acertos no chefe final, bônus, corrida atrás do ônibus, imagens finais e créditos. Também verifica as quatro introduções de 250 ticks, a área transitável e zero quadros com excesso de sprites. O teste do percurso isola fome e decks das batidas.
+O teste de campanha usa somente teclado, sem modificar vida, barra, posição ou resistência do chefe. Confere as quatro etapas, coleta das 100 canas e crescimento da manada, encontros pacíficos na pescaria e no bar, 12 acertos no chefe final, bônus, corrida atrás do ônibus, imagens finais e créditos. Também verifica as quatro introduções de 250 ticks, a área transitável e zero quadros com excesso de sprites. O teste do percurso isola fome e decks das batidas.
 
 O teste opcional do WebMSX precisa de Node.js 18+, Chrome e `playwright-core`:
 
@@ -93,6 +93,6 @@ A abertura usa SCREEN 5, 256×212 e 16 cores. O gameplay usa SCREEN 4, 256×192.
 
 O cartucho tem 64 bancos de 8 KiB. Os bancos 0/1 permanecem em 4000–7FFF para código e dados fixos. As janelas 8000–BFFF recebem recursos, imagens ou mapas. Os mapas 0–3 ocupam os bancos 48–51 e são copiados para RAM **D000–E5DF** antes de cada etapa: 5120 bytes de tiles, 160 centros da pista e 320 limites laterais. As variáveis e buffers de sprites usam C000–C6FF. A imagem da pescaria está no banco 56; as outras introduções nos bancos 24/32/40, e as imagens finais nos bancos 8/16.
 
-Há 64 padrões de sprite de 16×16, exatamente 2048 bytes. O trio reutiliza os primeiros oito slots; o Fusca usa seis deles. O homem do queijo e o queijo lançado reutilizam os slots do garoto da garapa e da cana durante a luta final. Duas máscaras por quadrante, com combinação CC, preservam até três cores por linha. Nas etapas a pé há apenas uma vaca ativa, e uma cana pode ficar oculta atrás do conjunto de personagens quando a linha já usa os oito slots do V9938; a coleta continua funcionando. As fases de carro mantêm até 32 sprites e oito por linha. Os três corredores da cena do ônibus usam a referência lateral `resources/runners-reference.png`, com o fundo branco removido e dois quadros de passada. O glifo de interrogação é definido em `QuestionMarkGlyph`, em `string.asm`, e gerado no código ASCII 63 dos tiles.
+Há 64 padrões de sprite de 16×16, exatamente 2048 bytes. O trio reutiliza os primeiros oito slots; o Fusca usa seis deles. O homem do queijo e o queijo lançado reutilizam os slots do garoto da garapa e da cana durante a luta final. Duas máscaras por quadrante, com combinação CC, preservam até três cores por linha. No percurso a pé há uma vaca ativa. Durante a coleta de canas, até três vacas compactas de 16×16 usam os slots de poeira e faixas verticais separadas para preservar a visibilidade do trio e da cana. A colisão do trio considera a parte inferior do corpo. O jogador pode descer até Y=152. As duas etapas a pé avançam um tile a cada 16 ticks; de carro, a cada oito ticks. As fases de carro mantêm até 32 sprites e oito por linha. Os três corredores da cena do ônibus usam a referência lateral `resources/runners-reference.png`, com o fundo branco removido e dois quadros de passada. O glifo de interrogação é definido em `QuestionMarkGlyph`, em `string.asm`, e gerado no código ASCII 63 dos tiles.
 
 A lógica é normalizada a 50 ticks por segundo; em vídeo de 60 Hz, um de cada seis VBlanks não avança a lógica. Testes de áudio verificam os registradores do PSG e as prioridades; não houve avaliação em hardware físico.

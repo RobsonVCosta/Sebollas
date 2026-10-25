@@ -83,6 +83,8 @@ _bossSprite     equ 0C091h ; x/y descriptor for the 32x32 reference sprite
 _hornAge        equ 0C099h ; envelope/vibrato position within each horn note
 _caneTotal      equ 0C09Ah ; collected canes during stage 1
 _cowChaseStart  equ 0C09Bh ; BIOS-time origin of the five-second pursuit
+_roadGarapaY    equ 0C09Dh
+_caneHundred    equ 0C09Eh
 _playerSprite   equ 0C0A0h
 _budgetY        equ 0C0A8h
 _budgetLines    equ 0C0A9h
@@ -95,6 +97,12 @@ RoadCenters3    equ RoadCenters
 RoadBounds      equ 0E4A0h
 RoadBounds1     equ RoadBounds
 RoadBounds3     equ RoadBounds
+_herdLevel      equ 0C0ACh
+_cowLaneMin     equ 0C0ADh
+_cowLaneMax     equ 0C0AEh
+_cowChaseStart2 equ 0C0B0h
+_cowChaseStart3 equ 0C0B2h
+_cowTimePtr     equ 0C0B4h
 _satBuffer      equ 0C100h ; 128 bytes
 _colorBuffer    equ 0C180h ; 512 bytes
 _screenBuffer   equ 0C400h ; 768 bytes

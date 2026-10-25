@@ -3,7 +3,7 @@
 CompleteStage:
     ld a,(_stage)
     or a
-    jp z,BeginGarapaMeeting
+    jp z,CheckGarapaContact
     cp 1
     jp z,BeginCaneChallenge
     cp 2
@@ -91,12 +91,22 @@ CheeseBonusTick:
     ld (_bonusClock),a
     ret
 .convert:
+    ld a,(_caneHundred)
+    or a
+    jr z,.normalCount
+    xor a
+    ld (_caneHundred),a
+    ld a,099h
+    ld (_cheeseCount),a
+    jr .award
+.normalCount:
     ld a,(_cheeseCount)
     or a
     jr z,.done
     sub 1
     daa
     ld (_cheeseCount),a
+.award:
     call AddHundred
     ld hl,_bonusBCD
     ld de,HundredBCD
@@ -120,8 +130,23 @@ DrawBonusNumbers:
     ld de,_score
     ld bc,0710h
     call PutText
+    ld hl,NAMTBL+10*32+17
+    ld a,(_caneHundred)
+    or a
+    jr z,.twoDigits
+    ld a,'1'
+    call WRTVRM
+    ld hl,NAMTBL+10*32+18
+    ld bc,2
+    ld a,'0'
+    call FILVRM
+    jr .bonusValue
+.twoDigits:
+    ld a,' '
+    call WRTVRM
     ld hl,NAMTBL+10*32+18
     call DrawCheeseDigits
+.bonusValue:
     ld hl,_bonusBCD
     ld de,_bonusText
     call BcdToString

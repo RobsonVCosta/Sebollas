@@ -136,7 +136,7 @@ DrawStageHUD:
     call FILVRM
     ld a,(_state)
     cp 12
-    jp z,DrawCaneTimer
+    ret z
     cp 4
     jr z,.boss
     ld a,(_refueling)
@@ -235,9 +235,14 @@ BeginBoss:
     ld a,(_stage)
     cp 3
     jr nz,.name
-    ld de,CheeseManText
+    ld de,CheeseManPhrase
 .name:
     ld bc,0308h
+    ld a,(_stage)
+    cp 3
+    jr nz,.caption
+    ld bc,0305h
+.caption:
     call PutText
     call DrawHUD
     call BuildBossSprites
@@ -844,6 +849,7 @@ FinalStageText: db "FASE FINAL",0
 MoreCowsText: db "MAIS VACAS NA ESTRADA",0
 GarapaText: db "GAROTO DA GARAPA",0
 CheeseManText: db "HOMEM DO QUEIJO",0
+CheeseManPhrase: db "Experimentem meu queijo",0
 BossHPLabel: db "HP ",0
 StationHUD: db "POSTO",0
 VictoryText: db "VENCEMOS O QUEIJO!",0

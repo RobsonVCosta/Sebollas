@@ -7,6 +7,8 @@ foreach line [split [read $f] \n] {
     if {[regexp {^([^:]+): EQU (0x[0-9A-Fa-f]+)} $line -> name addr]} {set sym($name) [expr {$addr}]}
 }
 close $f
+proc ::tcl::mathfunc::min {a b} {expr {$a<$b ? $a : $b}}
+proc ::tcl::mathfunc::max {a b} {expr {$a>$b ? $a : $b}}
 proc rd {addr} {debug read memory $addr}
 proc score {} {scan [binary encode hex [debug read_block memory 0xC008 4]] %d value; return $value}
 proc steer {target goal} {
@@ -23,14 +25,44 @@ proc avoid_walking_cow {target goal} {
     if {abs($cx-$x)<72 && abs($cy-$y)<80} {
         set left [rd 0xC08B]; set right [rd 0xC08C]
         if {$cx<$x} {set target $right} else {set target $left}
-        if {$cy<$y} {set goal 144} else {set goal 32}
+        if {$cy<$y} {set goal 152} else {set goal 32}
         if {$y>=136 && $cy<$y && $y-$cy<32} {set goal 32}
-        if {$y<=40 && $cy>$y && $cy-$y<32} {set goal 144}
+        if {$y<=40 && $cy>$y && $cy-$y<32} {set goal 152}
         if {[rd 0xC000]==12 && $goal<80} {set goal 80}
     }
     return [list $target $goal]
 }
-set visited {}; set stops {}; set intros [dict create 0 0 1 0 2 0 3 0]
+# Select a keyboard direction using a short prediction of the three cow lanes.
+proc steer_canes {target goal} {
+    set x [rd 0xC004]; set y [rd 0xC005]
+    set best 1e30; set choice 0
+    foreach {mask dx dy} {0 0 0 32 0 -2 160 2 -2 128 2 0 192 2 2 64 0 2 80 -2 2 16 -2 0 48 -2 -2} {
+        set value 0
+        foreach t {4 8 12 18} {
+            set px [expr {max(64,min(224,$x+$dx*$t))}]
+            set py [expr {max(80,min(152,$y+$dy*$t))}]
+            if {$py<112 && $px>160} {set px 160}
+            foreach base {0xC020 0xC028 0xC030} {
+                if {![rd $base]} {continue}
+                set cx [rd [expr {$base+1}]]; set cy [rd [expr {$base+2}]]
+                if {[rd [expr {$base+6}]]} {
+                    set cx [expr {$cx+min($t/2.0,max(-$t/2.0,$px+8-$cx))}]
+                    set lane [expr {80+($base-0xC020)*4}]
+                    set aim [expr {max($lane,min($lane+16,$py+16))}]
+                    set cy [expr {$cy+min($t/4.0,max(-$t/4.0,$aim-$cy))}]
+                } else {set cx [expr {$cx+([rd [expr {$base+3}]] ? -1 : 1)*$t/2.0}]}
+                set rx [expr {abs(($px+16)-($cx+8))}]
+                set ry [expr {abs(($py+25)-($cy+8))}]
+                if {$rx<17 && $ry<10} {set value [expr {$value+100000/(1+$t)}]}
+                if {$rx<35 && $ry<25} {set value [expr {$value+(35-$rx)*(25-$ry)*0.2}]}
+            }
+        }
+        set value [expr {$value+abs($px-$target)+abs($py-$goal)*1.5}]
+        if {$value<$best} {set best $value; set choice $mask}
+    }
+    if {$choice} {keymatrixdown 8 $choice}
+}
+set herd {}; set visited {}; set stops {}; set intros [dict create 0 0 1 0 2 0 3 0]
 set meetings {}; set bonus {}; set bonus_previous {}; set converted 0; set bonus_errors 0
 set boss_stations {}; set previous_hp 12; set boss_hits 0; set challenge_ticks 0
 set art_ticks [dict create 8 0 9 0]; set ending_phases {}; set finished false
@@ -82,18 +114,21 @@ proc campaign_drive {} {
             }
             keymatrixdown 8 1
         }
-        if {$row==0} {set target 120; set goal 80}
+        if {$stage<2 && (($axle<=117 && $axle>=108) || ($axle<=61 && $axle>=52))} {
+            set target 168; set goal 128
+        }
+        if {$row==0} {set target 120; set goal [expr {$stage==0 ? 96 : 80}]}
         steer $target $goal
     } elseif {$state==12} {
         incr ::challenge_ticks
         set target [expr {[rd 0xC06A]-8}]; set goal 128
         if {![rd 0xC069]} {set target [rd 0xC066]}
-        lassign [avoid_walking_cow $target $goal] target goal
+        dict set ::herd [rd 0xC0AC] 1
         if {![dict exists $::boss_stations 1] || [rd 0xC04E]<30 || [rd 0xC050]} {
             set target 216; set goal 136
             if {[rd 0xC050] && [rd 0xC04E]>=95} {dict set ::boss_stations 1 1}
         }
-        steer $target $goal
+        steer_canes $target $goal
     } elseif {$state==4} {
         set hp [rd 0xC065]
         if {$hp<$::previous_hp} {incr ::boss_hits [expr {$::previous_hp-$hp}]}
@@ -109,7 +144,7 @@ proc campaign_drive {} {
         steer $target 136
         keymatrixdown 8 1
     } elseif {$state==7} {
-        set raw [rd 0xC058]; set remaining [expr {($raw>>4)*10+($raw&15)}]; set value [score]
+        set raw [rd 0xC058]; set remaining [expr {($raw>>4)*10+($raw&15)}]; set value [score]; if {[rd 0xC09E]} {set remaining 100}
         if {![dict exists $::bonus $stage]} {dict set ::bonus $stage $remaining} else {
             lassign [dict get $::bonus_previous $stage] old_remaining old_score
             if {$remaining<$old_remaining} {
@@ -124,13 +159,13 @@ proc campaign_drive {} {
 }
 after time 6 {keymatrixdown 8 1}
 after time 6.1 {keymatrixup 8 1; debug set_bp $::sym(MainLoop.tick) {} {campaign_drive}}
-after time 300 {
+after time 1200 {
     set state [rd 0xC000]; set hz [expr {[rd 0xC003] ? 60 : 50}]
     set intro_ok true
     foreach stage {0 1 2 3} {if {[dict get $::intros $stage]!=250} {set intro_ok false}}
-    set ok [expr {$::finished && $state==6 && [dict size $::visited]==4 && $::boss_hits==12 && $::challenge_ticks==1500 && [rd 0xC09A]>0 && [dict exists $::meetings 0] && [dict exists $::meetings 2] && $intro_ok && $::road_errors==0 && $::overflow==0 && [dict size $::bonus]==3 && $::converted>0 && $::bonus_errors==0 && [dict get $::art_ticks 8]==250 && [dict get $::art_ticks 9]==250}]
+    set ok [expr {$::finished && $state==6 && [dict size $::visited]==4 && $::boss_hits==12 && $::challenge_ticks>0 && [rd 0xC09A]==100 && [dict size $::herd]==3 && [dict exists $::meetings 0] && [dict exists $::meetings 2] && $intro_ok && $::road_errors==0 && $::overflow==0 && [dict size $::bonus]==3 && $::converted>0 && $::bonus_errors==0 && [dict get $::art_ticks 8]==250 && [dict get $::art_ticks 9]==250}]
     set f [open "resources/generated/campaign-$hz.txt" w]
-    puts $f "[expr {$ok ? {PASS} : {FAIL}}] campaign: state=$state; stages=[dict size $::visited]; stops=[dict size $::stops]; final boss hits=$::boss_hits; cane ticks=$::challenge_ticks; canes caught=[rd 0xC09A]; meetings=$::meetings; intro ticks=$::intros; arena refills=$::boss_stations; road errors=$::road_errors; bonus stages=[dict size $::bonus]; converted=$::converted; bonus errors=$::bonus_errors; max sprites=$::worst; overflow=$::overflow; lives=[rd 0xC006]"
+    puts $f "[expr {$ok ? {PASS} : {FAIL}}] campaign: state=$state; stages=[dict size $::visited]; stops=[dict size $::stops]; final boss hits=$::boss_hits; cane ticks=$::challenge_ticks; canes caught=[rd 0xC09A]; herd=$::herd; meetings=$::meetings; intro ticks=$::intros; arena refills=$::boss_stations; road errors=$::road_errors; bonus stages=[dict size $::bonus]; converted=$::converted; bonus errors=$::bonus_errors; max sprites=$::worst; overflow=$::overflow; lives=[rd 0xC006]"
     close $f; exit
 }
 set power true
