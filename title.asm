@@ -1,7 +1,9 @@
 ; SCREEN 5 matches the reference's native 256x212 canvas and avoids tile clashes.
 ShowTitleArt:
-    ld a,2
-    ld (077FFh),a ; select the title bank
+    ld a,4
+    ld (07000h),a ; select the two 8 KiB title banks
+    inc a
+    ld (07800h),a
     ld a,5
     call CHGMOD
     call DISSCR

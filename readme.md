@@ -10,13 +10,13 @@ A abertura usa **SCREEN 5, 256 × 212 pixels**, com a arte de referência conver
 
 Requisitos: MSX2 ou superior, ou emulador com BIOS compatível. Não funciona como jogo no MSX1; nesse modelo, a ROM apresenta a mensagem de que requer MSX2.
 
-A imagem [Sebollas.rom](Sebollas.rom) é um cartucho de **64 KiB, com mapper ASCII16**, com cabeçalho `AB` e origem em `0x4000`.
+A imagem [Sebollas.rom](Sebollas.rom) é um cartucho de **64 KiB, com mapper ASCII8**, com cabeçalho `AB` e origem em `0x4000`.
 
 ```sh
-openmsx -machine C-BIOS_MSX2 -cart Sebollas.rom -romtype ASCII16
+openmsx -machine C-BIOS_MSX2 -cart Sebollas.rom -romtype ASCII8
 ```
 
-Também é possível carregar a ROM pela interface de outro emulador ou por um carregador de cartuchos compatível, selecionando **ASCII16** quando necessário. A ROM usa o registrador espelhado `0x77FF`, reconhecido pelo [detector de mappers do openMSX](https://github.com/openMSX/openMSX/blob/master/src/memory/RomFactory.cc).
+No [WebMSX](https://webmsx.org/), carregue `Sebollas.rom` como cartucho em uma máquina MSX2 ou superior. A detecção automática seleciona ASCII8. Se houver uma seleção de mapper salva de uma versão anterior, escolha **ASCII8** no menu do cartucho.
 
 | Controle | Ação |
 | --- | --- |
@@ -83,7 +83,7 @@ No PowerShell, usando a distribuição do assembler na pasta superior:
 ..\sjasmplus.exe Sebollas.asm
 ```
 
-A diretiva `OUTPUT` substitui `Sebollas.rom`. O cartucho usa quatro bancos de 16 KiB no mapper ASCII16, totalizando 65.536 bytes. O banco 0 mantém o código fixo, o banco 1 contém os recursos da partida e o banco 2 guarda a abertura; o banco 3 é reservado. O fonte verifica os limites de cada janela com `ASSERT`.
+A diretiva `OUTPUT` substitui `Sebollas.rom`. O cartucho usa oito bancos de 8 KiB no mapper ASCII8, totalizando 65.536 bytes. O banco 0 mantém todo o código fixo; os bancos 1 a 3 contêm os recursos da partida; os bancos 4 e 5 guardam a abertura; os bancos 6 e 7 são reservados. A janela 6000–7FFF permanece no banco 1, enquanto as janelas 8000–9FFF e A000–BFFF alternam entre os recursos da partida e da abertura. O fonte verifica os limites de cada janela com `ASSERT`.
 
 A montagem foi validada com **SjASMPlus 1.21.0**, sem erros ou avisos.
 
@@ -110,6 +110,15 @@ make test             # montagem e testes de recursos
 make test-emulator    # rotinas Z80 e gameplay contínuo em 50/60 Hz
 make captures         # capturas reais de abertura, jogo e GAME OVER
 ```
+
+O teste opcional no WebMSX usa Node.js 18+, Chrome e `playwright-core`. Ele acessa o emulador público, carrega a ROM local sem forçar o mapper e verifica abertura, bancos de recursos, espera inicial, direção, scroll e buzina em MSX2+ de 50 e 60 Hz:
+
+```sh
+npm install --prefix /tmp/sebollas-webmsx-test playwright-core
+NODE_PATH=/tmp/sebollas-webmsx-test/node_modules node tests/webmsx_smoke.cjs
+```
+
+Use `CHROME_PATH` se o Chrome estiver fora de `/usr/bin/google-chrome`. As capturas são gravadas em `previews/title-webmsx-*.png` e `previews/game-webmsx-*.png`.
 
 ## Organização
 
@@ -166,7 +175,8 @@ A lógica roda a 50 ticks por segundo. Em vídeo de 60 Hz, um de cada seis VBlan
 
 ## Verificação realizada
 
-- Montagem sem erros ou avisos; cartucho ASCII16 de 64 KiB.
+- Montagem sem erros ou avisos; cartucho ASCII8 de 64 KiB.
+- **WebMSX 6.0.8 no Chrome**, em MSX2+ de 50 e 60 Hz: detecção automática ASCII8, abertura em SCREEN 5, transição para SCREEN 4, bancos de recursos, espera pelo primeiro comando, movimento, scroll e buzina. A campanha completa foi validada no openMSX.
 - **Doze testes Python**: fonte original, paletas, endereços de VRAM, máscaras, direções e fidelidade às cores da vaca, percurso e pontos de interesse, ROM, compressão da abertura, texto integral dos créditos, tamanhos dos três corredores e limite de sprites.
 - **144 casos de rotinas Z80 em cada frequência**, no openMSX 17.0 com C-BIOS MSX2 de 50 e 60 Hz: oito direções, bordas, alcance da buzina, vacas, abertura em SCREEN 5, transição para a partida, pontuação BCD, três vidas, invulnerabilidade, menu, áudio, combustível, alerta, marcador, sequência da buzina, som de abastecimento, música e prioridade dos efeitos, coleta de queijos, postos, pontes, terreno e chegada, espera inicial, sequência das fases, canas, resistência do chefe, embarque, créditos e limite de sprites da animação, entrada das vacas no topo, sincronismo com o cenário e soma animada dos queijos.
 - Dois testes contínuos de aproximadamente 30 segundos, com direção e buzina: **zero quadros com excesso de sprites**, máximo observado de oito por linha.

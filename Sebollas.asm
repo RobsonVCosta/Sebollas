@@ -1,4 +1,4 @@
-; SEBOLLAS -- MSX2, SCREEN 4 game / SCREEN 5 title, 64 KiB ASCII16 cartridge.
+; SEBOLLAS -- MSX2, SCREEN 4 game / SCREEN 5 title, 64 KiB ASCII8 cartridge.
     include ram_vars.asm
     include bios.asm
     include "resources/generated/assets.inc"
@@ -29,6 +29,10 @@ START:
     halt
     jr .stop
 .msx2:
+    ; ASCII8 powers up with bank 0 in every window. Keep all executable code
+    ; in 4000-5FFF and map the next resource bank before reading any assets.
+    ld a,1
+    ld (06800h),a
     call MapCartridgePage2
     call InitVarsAtRAM
     ei
@@ -98,7 +102,7 @@ MainLoop:
     jp MainLoop
 
 MapCartridgePage2:
-    ; The ASCII16 cartridge also maps 8000-BFFF. BIOS initially maps page 1;
+    ; The ASCII8 cartridge also maps 8000-BFFF. BIOS initially maps page 1;
     ; select the same primary/expanded slot for page 2 before reading the art.
     call RSLREG
     rrca
@@ -119,8 +123,10 @@ MapCartridgePage2:
     jp ENASLT
 
 SetupGameVideo:
-    ld a,1
-    ld (077FFh),a ; ASCII16: game data in 8000-BFFF
+    ld a,2
+    ld (07000h),a ; ASCII8: game data in 8000-9FFF
+    inc a
+    ld (07800h),a ; ASCII8: game data in A000-BFFF
     ld a,4
     call CHGMOD
     call DISSCR
@@ -843,7 +849,7 @@ MSX2Message: db "SEBOLLAS REQUER MSX2",13,10,0
 TenBCD: db 0,0,0,010h
 HundredBCD: db 0,0,1,0
 CodeEnd:
-    ASSERT CodeEnd < 8000h
+    ASSERT CodeEnd < 6000h
 TilePatterns: incbin "resources/generated/patterns.bin"
 TileColors: incbin "resources/generated/colors.bin"
 WorldMap: incbin "resources/generated/world.bin"
@@ -856,7 +862,7 @@ StagePalette2: incbin "resources/generated/palette2.bin"
 GameDataEnd:
     ASSERT GameDataEnd <= 0C000h
     defs 0C000h-$,0FFh
-    ; Bank 2 is switched into 8000-BFFF only for the title screen.
+    ; Banks 4 and 5 are switched into 8000-BFFF for the title screen.
     disp 8000h
 TitlePalette: incbin "resources/generated/title_palette.bin"
 TitlePlayOn: incbin "resources/generated/title_play.bin"
@@ -866,5 +872,5 @@ TitleBankEnd:
     defs 0C000h-$,0FFh
     ent
     org 0
-    defs 4000h,0FFh ; unused bank 3, power-of-two 64K cartridge
+    defs 4000h,0FFh ; unused banks 6 and 7, power-of-two 64K cartridge
     ASSERT $ == 4000h
