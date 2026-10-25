@@ -6,3 +6,4 @@ __pycache__/
 /resources/generated/capture*.bin
 /resources/generated/capture.txt
 /resources/generated/route-*.txt
+/resources/generated/campaign-*.txt

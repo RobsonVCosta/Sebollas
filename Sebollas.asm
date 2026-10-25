@@ -1,7 +1,8 @@
-; SEBOLLAS -- MSX2, SCREEN 4, 16 KiB plain cartridge.
+; SEBOLLAS -- MSX2, SCREEN 4 game / SCREEN 5 title, 64 KiB ASCII16 cartridge.
     include ram_vars.asm
     include bios.asm
     include "resources/generated/assets.inc"
+    include "resources/generated/title.inc"
     OUTPUT Sebollas.rom
     org 4000h
     db "AB"
@@ -28,25 +29,115 @@ START:
     halt
     jr .stop
 .msx2:
+    call MapCartridgePage2
     call InitVarsAtRAM
     ei
-    ld a,4
-    call CHGMOD
-    call ERAFNK
-    xor a
-    ld (KEYSND),a
-    ; BIOS owns the video frequency; normalize logic to 50 ticks/second.
+    ; Normalize both display standards to 50 game ticks per second.
     ld a,(RG9SAV)
     and 2
     xor 2
     ld (_is60Hz),a
+    call SetupGameVideo
+    call InitSound
+    call ShowMenu
+MainLoop:
+    halt
+    ld a,(_is60Hz)
+    or a
+    jr z,.tick
+    ld a,(_framePhase)
+    inc a
+    cp 6
+    jr c,.savePhase
+    xor a
+    ld (_framePhase),a
+    jp MainLoop
+.savePhase:
+    ld (_framePhase),a
+.tick:
+    ld hl,_tick
+    inc (hl)
+    call UpdateSound
+    ld a,(_state)
+    cp 1
+    jr z,.play
+    cp 3
+    jr c,.menu
+    call CampaignTick
+    jp MainLoop
+.menu:
+    call MenuTick
+    jp MainLoop
+.play:
+    call CheckDriveStart
+    ld a,(_driveStarted)
+    or a
+    jr nz,.driving
+    call BuildSprites
+    call UploadSprites
+    jp MainLoop
+.driving:
+    call MovePlayer
+    call UpdateJourney
+    ld a,(_state)
+    cp 1
+    jp nz,MainLoop
+    call UpdateHornInput
+    call UpdateScroll
+    call UpdateCheese
+    call UpdateCows
+    call CheckHits
+    ld a,(_state)
+    cp 1
+    jp nz,MainLoop
+    ld a,(_tick)
+    and 3
+    call z,DrawHUD
+    call BuildSprites
+    call UploadSprites
+    jp MainLoop
+
+MapCartridgePage2:
+    ; The ASCII16 cartridge also maps 8000-BFFF. BIOS initially maps page 1;
+    ; select the same primary/expanded slot for page 2 before reading the art.
+    call RSLREG
+    rrca
+    rrca
+    and 3
+    ld c,a
+    ld b,0
+    ld hl,EXPTBL
+    add hl,bc
+    or (hl)
+    ld e,a
+    ld hl,SLTTBL
+    add hl,bc
+    ld a,(hl)
+    and 0Ch
+    or e
+    ld h,080h
+    jp ENASLT
+
+SetupGameVideo:
+    ld a,1
+    ld (077FFh),a ; ASCII16: game data in 8000-BFFF
+    ld a,4
+    call CHGMOD
+    call DISSCR
+    call ERAFNK
+    xor a
+    ld (KEYSND),a
+    ld a,(RG8SAV)
+    and 0FDh
+    ld c,8
+    call WriteVDP
     ; Force 192 visible lines, preserving the BIOS 50/60Hz selection.
     ld a,(RG9SAV)
     and 07Fh
     ld c,9
     call WriteVDP
     ; 16x16 sprites, no magnification, display and VBlank IRQ enabled.
-    ld a,0E2h
+    ld a,0A2h
     ld c,1
     call WriteVDP
     ; Explicit SCREEN 4 layout: color=1C00, SAT=1E00, patterns=3800.
@@ -63,50 +154,8 @@ START:
     ld c,7
     call WriteVDP
     call LoadGraphics
-    call InitSound
-    call ShowMenu
-MainLoop:
-    halt
-    ld a,(_is60Hz)
-    or a
-    jr z,.tick
-    ld a,(_framePhase)
-    inc a
-    cp 6
-    jr c,.savePhase
-    xor a
-    ld (_framePhase),a
-    jr MainLoop
-.savePhase:
-    ld (_framePhase),a
-.tick:
-    ld hl,_tick
-    inc (hl)
-    call UpdateSound
-    ld a,(_state)
-    cp 1
-    jr z,.play
-    call MenuTick
-    jr MainLoop
-.play:
-    call MovePlayer
-    call UpdateJourney
-    ld a,(_state)
-    cp 1
-    jr nz,MainLoop
-    call UpdateBullets
-    call UpdateScroll
-    call UpdateCows
-    call CheckHits
-    ld a,(_state)
-    cp 1
-    jr nz,MainLoop
-    ld a,(_tick)
-    and 3
-    call z,DrawHUD
-    call BuildSprites
-    call UploadSprites
-    jr MainLoop
+    call HideSprites
+    jp ENASCR
 
 WriteVDP:
     ld b,a
@@ -199,39 +248,25 @@ MenuTick:
     jp ShowMenu
 .blink:
     ld a,(_state)
-    cp 2
-    ret nc
+    or a
+    ret nz
     ld a,(_tick)
     and 15
     ret nz
-    ld de,PlayText
     ld a,(_tick)
     and 16
-    jr z,.text
-    ld de,BlankPlay
-.text:
-    ld bc,0E0Eh
-    jp PutText
+    xor 16
+    jp DrawTitlePlay
+
 ShowMenu:
-    call HideSprites
-    ld hl,NAMTBL
-    ld bc,768
-    ld a,32
-    call FILVRM
-    ld de,TitleText
-    ld bc,050Ch
-    call PutText
-    ld de,SubtitleText
-    ld bc,0706h
-    call PutText
-    ld de,PlayText
-    ld bc,0E0Eh
-    call PutText
+    call StopMusic
     xor a
+    ld (_state),a
     ld (_startArmed),a
-    ret
+    jp ShowTitleArt
 
 ShowGameOver:
+    call StopMusic
     call DrawHUD
     call HideSprites
     ; Preserve the final world, with a centered three-row message panel.
@@ -299,9 +334,9 @@ MovePlayer:
     jr nz,.rightTest
 .left:
     ld a,(_carX)
-    cp 64
+    cp 32
     jr z,.rightTest
-    dec a
+    sub 2
     ld (_carX),a
 .rightTest:
     ld a,(_direction)
@@ -313,84 +348,61 @@ MovePlayer:
     jr nz,.invulnerability
 .right:
     ld a,(_carX)
-    cp 176
+    cp 208
     jr z,.invulnerability
-    inc a
+    add a,2
     ld (_carX),a
 .invulnerability:
     ld a,(_invulnerable)
     or a
-    jr z,.fireWait
-    dec a
-    ld (_invulnerable),a
-.fireWait:
-    ld a,(_fireWait)
-    or a
     ret z
     dec a
-    ld (_fireWait),a
+    ld (_invulnerable),a
     ret
 
-UpdateBullets:
-    ld ix,_bullets
-    call .advance
-    ld ix,_bullets+4
-    call .advance
+UpdateHornInput:
     xor a
     call GTTRIG
     or a
+    jr z,.sounding
+    call SoundHorn
+.sounding:
+    ld a,(_hornPhase)
+    or a
     ret z
-    ld a,(_fireWait)
-    or a
-    ret nz
-    ld ix,_bullets
-    ld iy,_bullets+4
+    cp 2 ; the pause between the two horn notes is silent
+    ret z
+    jp ScareCowsAhead
+
+ScareCowsAhead:
+    ld ix,_cows
+    call .cow
+    ld ix,_cows+8
+.cow:
     ld a,(ix+0)
     or a
-    jr z,.slot
-    push ix
-    pop iy
-    ld ix,_bullets+4
-    ld a,(ix+0)
+    ret z
+    ld a,(ix+4)
     or a
     ret nz
-.slot:
-    ; Full 16-pixel sprite bounding boxes of the two bullets cannot overlap.
-    ld a,(iy+0)
-    or a
-    jr z,.spawn
-    ld a,(_carY)
-    sub 8
-    sub (iy+2)
-    cp 16
-    ret c
-    cp 241
-    ret nc
-.spawn:
-    ld (ix+0),1
+    ; Sound reaches the road ahead immediately, including a bend in the lane.
     ld a,(_carX)
-    ld (ix+1),a
+    sub (ix+1)
+    add a,40
+    cp 97
+    ret nc
     ld a,(_carY)
-    sub 8
-    ld (ix+2),a
-    ld a,8
-    ld (_fireWait),a
-    jp SoundShot
-.advance:
-    ld a,(ix+0)
-    or a
-    ret z
-    ld a,(ix+2)
-    sub 4
-    cp 16
-    jr c,.remove
-    ld (ix+2),a
-    ret
-.remove:
-    ld (ix+0),0
-    ret
+    sub (ix+2)
+    cp 128
+    ret nc
+    ld (ix+4),1
+    call AddHundred
+    jp SoundCow
 
 UpdateScroll:
+    ld a,(_driveStarted)
+    or a
+    ret z
     ld a,(_refueling)
     or a
     ret nz
@@ -399,7 +411,7 @@ UpdateScroll:
     ret z
     ld a,(_scrollClock)
     inc a
-    and 15
+    and 7
     ld (_scrollClock),a
     ret nz
     ld a,(_mapRow)
@@ -423,15 +435,18 @@ UpdateScroll:
     ret
 
 UpdateCows:
+    ld a,(_driveStarted)
+    or a
+    ret z
     ld ix,_cows
     call .walk
     ld ix,_cows+8
     call .walk
-    ; Cows cross land only, and stay clear of the destination courtyard.
+    ; Parked cows appear along the road, away from the destination courtyard.
     ld a,(_mapRow)
     cp 20
     ret c
-    add a,3 ; spawn Y=40, world viewport starts at Y=16
+    ; Cows enter at the top edge of the scrolling playfield, Y=16.
     ld l,a
     ld h,0
     add hl,hl
@@ -448,7 +463,7 @@ UpdateCows:
     dec a
     ld (_spawnClock),a
     ret nz
-    ld a,128
+    call CowSpawnDelay
     ld (_spawnClock),a
     ld ix,_cows
     ld a,(ix+0)
@@ -464,41 +479,41 @@ UpdateCows:
     or a
     jr z,.other
     ld a,(_cows+2)
-    cp 88
+    cp 64
     ret c
 .other:
     ld a,(_cows+8)
     or a
     jr z,.spawn
     ld a,(_cows+10)
-    cp 88
+    cp 64
     ret c
 .spawn:
     ld (ix+0),1
-    ld (ix+2),40
+    ld (ix+2),16
     ld (ix+4),0
     ld a,(_nextDirection)
     ld (ix+3),a
     xor 1
     ld (_nextDirection),a
-    ld a,(ix+3)
-    or a
-    ld a,0
-    jr z,.setX
-    ld a,224
-.setX:
+    ; The 32px cow is centered on this part of the curved road.
+    ld a,(_mapRow)
+    add a,2 ; cow center at display Y=32, map row + 2
+    push ix
+    call RoadCenter
+    pop ix
+    sub 8 ; RoadCenter is the top-left of a 16px car, not a 32px cow
     ld (ix+1),a
     ret
 .walk:
     ld a,(ix+0)
     or a
     ret z
-    ld b,1
+    ; Parked cows stay at their world position until the driver honks.
     ld a,(ix+4)
     or a
-    jr z,.step
+    ret z
     ld b,2
-.step:
     ld a,(ix+3)
     or a
     ld a,(ix+1)
@@ -517,10 +532,7 @@ UpdateCows:
     ret
 .exit:
     ld (ix+0),0
-    ld a,(ix+4)
-    or a
-    ret nz
-    jp AddTen
+    ret
 
 CheckHits:
     ld ix,_cows
@@ -534,10 +546,6 @@ CheckHits:
     ld a,(ix+0)
     or a
     ret z
-    ld iy,_bullets
-    call .bullet
-    ld iy,_bullets+4
-    call .bullet
     ld a,(_invulnerable)
     or a
     ret nz
@@ -553,28 +561,6 @@ CheckHits:
     cp 48
     ret nc
     jp LoseLife
-.bullet:
-    ld a,(iy+0)
-    or a
-    ret z
-    ld a,(iy+1)
-    sub (ix+1)
-    add a,4
-    cp 24
-    ret nc
-    ld a,(iy+2)
-    sub (ix+2)
-    sub 3
-    cp 24
-    ret nc
-    ld (iy+0),0
-    ld a,(ix+4)
-    or a
-    ret nz
-    ld (ix+4),1
-    call AddHundred
-    jp SoundCow
-
 AddTen:
     ld de,TenBCD
     jr AddScore
@@ -617,6 +603,8 @@ DrawHUD:
     inc hl
     inc hl
     djnz .hearts
+    call DrawStageHUD
+    call DrawCheeseHUD
     jp DrawFuel
 DrawWorld:
     ; Keep two HUD rows fixed; copy only rows 2..23 from the finite route.
@@ -756,6 +744,9 @@ BuildSprites:
     pop bc
     djnz .half
 .dust:
+    ld a,(_driveStarted)
+    or a
+    jr z,.cows
     ld a,(_carY)
     add a,32
     ld d,a
@@ -768,14 +759,12 @@ BuildSprites:
     and 3
     add a,DUST_PATTERN/4
     call AppendSprite
+.cows:
     ld ix,_cows
     call DrawCow
     ld ix,_cows+8
     call DrawCow
-    ld ix,_bullets
-    call DrawBullet
-    ld ix,_bullets+4
-    jp DrawBullet
+    jp DrawCheese
 DrawCow:
     ld a,(ix+0)
     or a
@@ -818,14 +807,6 @@ DrawCow:
     pop bc
     djnz .row
     ret
-DrawBullet:
-    ld a,(ix+0)
-    or a
-    ret z
-    ld d,(ix+2)
-    ld e,(ix+1)
-    ld a,BULLET_PATTERN/4
-    jp AppendSprite
 UploadSprites:
     ld hl,_colorBuffer
     ld de,SPRCLR
@@ -836,31 +817,54 @@ UploadSprites:
     ld bc,128
     jp LDIRVM
 
+    include bonus.asm
+    include campaign.asm
+    include cheese.asm
     include route.asm
     include initRAM.asm
     include string.asm
     include math.asm
     include sfx.inc
+    include music.asm
+    include title.asm
 TitleText: db "SEBOLLAS",0
 SubtitleText: db "AVENTURA NA FAZENDA",0
 PlayText: db "PLAY",0
 BlankPlay: db "    ",0
 GameOverText: db "GAME OVER",0
 ArrivalText: db "CHEGAMOS!",0
+CheeseLabel: db "QUEIJOS ",0
+GaugeEmpty: db "E",0
+GaugeFull: db "F",0
+NeedleOffsets: db 0,1,2,2,3,4,5,6,6,7
 FuelLabel: db "GAS",0
-RouteLabel: db "VAVA - DESTINO",0
-RefuelLabel: db "ABASTECENDO   ",0
 ScoreLabel: db "SCORE",0
 MSX2Message: db "SEBOLLAS REQUER MSX2",13,10,0
 TenBCD: db 0,0,0,010h
 HundredBCD: db 0,0,1,0
+CodeEnd:
+    ASSERT CodeEnd < 8000h
 TilePatterns: incbin "resources/generated/patterns.bin"
 TileColors: incbin "resources/generated/colors.bin"
 WorldMap: incbin "resources/generated/world.bin"
+RoadCenters: incbin "resources/generated/road_centers.bin"
 SpritePatterns: incbin "resources/generated/sprites.bin"
 SpriteLineColors: incbin "resources/generated/sprite_colors.bin"
 GamePalette: incbin "resources/generated/palette0.bin"
-RomEnd:
-    ASSERT RomEnd <= 8000h
-    defs 8000h-$,0FFh
-    ASSERT $ == 8000h
+StagePalette1: incbin "resources/generated/palette1.bin"
+StagePalette2: incbin "resources/generated/palette2.bin"
+GameDataEnd:
+    ASSERT GameDataEnd <= 0C000h
+    defs 0C000h-$,0FFh
+    ; Bank 2 is switched into 8000-BFFF only for the title screen.
+    disp 8000h
+TitlePalette: incbin "resources/generated/title_palette.bin"
+TitlePlayOn: incbin "resources/generated/title_play.bin"
+TitleBitmapRLE: incbin "resources/generated/title.rle"
+TitleBankEnd:
+    ASSERT TitleBankEnd <= 0C000h
+    defs 0C000h-$,0FFh
+    ent
+    org 0
+    defs 4000h,0FFh ; unused bank 3, power-of-two 64K cartridge
+    ASSERT $ == 4000h

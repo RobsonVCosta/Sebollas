@@ -1,4 +1,11 @@
 ; MSX BIOS entry points; SCREEN 4 uses the V9938 sprite-mode-2 tables.
+ENASLT equ 0024h
+RSLREG equ 0138h
+EXPTBL equ 0FCC1h
+SLTTBL equ 0FCC5h
+DISSCR equ 0041h
+ENASCR equ 0044h
+RG8SAV equ 0FFE7h
 CHGMOD equ 005Fh
 WRTVRM equ 004Dh
 LDIRVM equ 005Ch

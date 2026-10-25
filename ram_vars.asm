@@ -1,5 +1,5 @@
 ; Sebollas: all mutable state is explicitly initialized in C000-C6FF.
-_state          equ 0C000h ; 0 title, 1 playing, 2 game over, 3 arrived
+_state          equ 0C000h ; 0 title, 1 road, 2 game over, 3 stage card, 4 boss, 5 ending, 6 credits, 7 bonus count
 _tick           equ 0C001h
 _framePhase     equ 0C002h
 _is60Hz         equ 0C003h
@@ -9,7 +9,7 @@ _lives          equ 0C006h
 _invulnerable   equ 0C007h
 _scoreBCD_8Digits equ 0C008h
 _score          equ 0C00Ch ; eight ASCII digits and terminator
-_fireWait       equ 0C015h
+_reserved15     equ 0C015h
 _scrollClock    equ 0C016h
 _mapRow         equ 0C017h
 _spawnClock     equ 0C018h
@@ -17,8 +17,8 @@ _nextDirection  equ 0C019h
 _startArmed     equ 0C01Ah
 _menuDirty      equ 0C01Bh
 _effectTime     equ 0C01Ch ; three channel countdowns
-_cows           equ 0C020h ; two records: active,x,y,direction,scared (8 byte stride)
-_bullets        equ 0C030h ; two records: active,x,y (4 byte stride)
+_cows           equ 0C020h ; two records: active,x,y,exitDirection,leaving (8 byte stride)
+_reserved30     equ 0C030h ; former projectile records, kept as unused RAM
 _spriteCount    equ 0C040h
 _satPtr         equ 0C041h
 _colorPtr       equ 0C043h
@@ -29,9 +29,48 @@ _drawY          equ 0C048h
 _copyCount      equ 0C049h
 _Print          equ 0C04Ah ; x,y,string pointer
 _fuel           equ 0C04Eh ; 0..100
-_fuelClock      equ 0C04Fh ; one unit per 12 game ticks
+_fuelClock      equ 0C04Fh ; one unit per 6 game ticks
 _refueling      equ 0C050h ; freezes scrolling while tank fills
 _terrainRow     equ 0C051h
+_fuelAlertClock equ 0C052h
+_cheese         equ 0C053h ; active
+_cheeseX        equ 0C054h
+_cheeseY        equ 0C055h
+_cheesePhase    equ 0C056h
+_cheeseClock    equ 0C057h
+_cheeseCount    equ 0C058h ; packed BCD, 00..99
+_hornPhase      equ 0C059h ; 0 idle, 1 short bi, 2 gap, 3 long biiii
+_hornClock      equ 0C05Ah
+_musicStep      equ 0C05Bh ; next note in the 32-event melody
+_musicClock     equ 0C05Ch ; ticks remaining in this note
+_musicPeriod    equ 0C05Dh ; current 16-bit PSG period, 0 = rest
+_titleBlink     equ 0C05Fh
+_stage          equ 0C060h
+_driveStarted   equ 0C061h
+_driveArmed     equ 0C062h
+_stageTimer     equ 0C063h ; word
+_bossHP         equ 0C065h
+_bossX          equ 0C066h
+_bossDirection  equ 0C067h
+_throwClock     equ 0C068h
+_caneActive     equ 0C069h
+_caneX          equ 0C06Ah
+_caneY          equ 0C06Bh
+_caneTarget     equ 0C06Ch
+_bossFlash      equ 0C06Dh
+_endingPhase    equ 0C06Eh
+_endingClock    equ 0C06Fh ; word
+_busColumn      equ 0C071h
+_runnerSmallX   equ 0C072h ; 255 waiting, 254 boarded, otherwise x
+_runnerTallX    equ 0C073h
+_runnerFatX     equ 0C074h
+_creditNext     equ 0C075h ; word
+_bonusBCD       equ 0C077h ; 4 packed BCD bytes, points converted this stage
+_bonusText      equ 0C07Bh ; 8 ASCII digits and terminator
+_bonusClock     equ 0C084h
+_bonusDone      equ 0C085h
+_bonusSoundStep equ 0C086h
+_fuelAlertPitch equ 0C087h
 _satBuffer      equ 0C100h ; 128 bytes
 _colorBuffer    equ 0C180h ; 512 bytes
 _screenBuffer   equ 0C400h ; 768 bytes

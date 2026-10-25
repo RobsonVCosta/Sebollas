@@ -13,6 +13,47 @@ assert v[0x3800:0x3800+len(s)]==s
 assert (d/'capture-palette.bin').read_bytes()==(d/'palette0.bin').read_bytes()
 assert v[0x1801:0x1806]==b'SCORE'
 assert bytes(v[a] for a in (0x1819,0x181b,0x181d))==bytes([140]*3)
-assert all(t in range(32,91) or 128<=t<=158 for t in v[0x1840:0x1b00])
+assert all(t==193 or t in range(32,91) or 128<=t<=167 for t in v[0x1840:0x1b00])
 assert v[0x1821:0x1824]==b'GAS'
+assert v[0x1840-14:0x1840-6]==b'QUEIJOS '
+assert all(48<=ch<=57 for ch in v[0x1840-6:0x1840-4])
 print('Captured V9938: 3 pattern/color banks, sprite patterns, palette and fixed HUD match ROM assets')
+
+# Compare every pixel of the cheese over the bridge, including its clear border.
+# This catches a solid rectangle even when it blends into the dirt road.
+import json
+from PIL import Image
+meta=json.loads((d/'manifest.json').read_text())
+world=(d/'world.bin').read_bytes()
+palette=(d/'palette0.bin').read_bytes()
+levels=(0,43,81,118,153,187,221,255)
+def rgb(index):
+    rb,g=palette[index*2:index*2+2]
+    return levels[rb>>4],levels[g],levels[rb&15]
+bridge=Image.open(ROOT/'previews/ponte-openmsx.png').convert('RGB')
+pattern=meta['cheese']
+for y in range(16):
+    for x in range(16):
+        bits=s[pattern*32+(16 if x>=8 else 0)+y]
+        if bits&(128>>(x%8)):
+            color=10
+        else:
+            px,py=144+x,96+y
+            tile=world[(76+(py-16)//8)*32+px//8]
+            bits=p[tile*8+py%8]
+            line=c[tile*8+py%8]
+            color=line>>4 if bits&(128>>(px%8)) else line&15
+        assert bridge.getpixel((144+x,96+y))==rgb(color),(x,y)
+print('Captured cheese: transparent border and holes preserve the actual bridge pixels')
+
+# The opening uses SCREEN 5 and its own palette; PLAY may be on or off.
+opening=(d/'capture-title-vram.bin').read_bytes()
+expected=bytearray((d/'title_bitmap.bin').read_bytes())
+assert (d/'capture-title-palette.bin').read_bytes()==(d/'title_palette.bin').read_bytes()
+for row in range(212):
+    for col in range(128):
+        if 100<=row<108 and 76<=col<96: continue
+        pos=row*128+col
+        assert opening[pos]==expected[pos],('title',row,col)
+assert Image.open(ROOT/'previews/abertura-openmsx.png').size==(256,212)
+print('Captured title: full 256x212 SCREEN 5 bitmap and dedicated palette match ROM assets')

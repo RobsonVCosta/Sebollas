@@ -1,8 +1,8 @@
 # Sebollas
 
-Jogo de estrada rural para **MSX2**, escrito em **Assembly Z80**. Saia da casa do Vavá e leve o Fusquinha amarelo até a casa de destino. A estrada de terra tem trechos estreitos, duas pontes sobre rios e dois postos de combustível. Desvie das vaquinhas e use os tiros para espantá-las até a margem.
+Jogo de estrada rural para **MSX2**, escrito em **Assembly Z80**. Saia da casa do Vavá e viaje por três fases até o confronto com o garoto da garapa. Após vencê-lo, Argon, Gordinho (Leto) e Robson correm para pegar o ônibus de volta a Nova Iguaçu. A estrada de terra tem curvas para os dois lados, trechos estreitos, duas pontes sobre rios e dois postos de combustível. Buzine para tirar do caminho as vaquinhas paradas na estrada e recolha os queijos que rolam pela estrada.
 
-A ROM usa **SCREEN 4, 256 × 192 pixels**, gráficos em tiles, sprites coloridos sobrepostos e áudio PSG. A abertura e os textos reutilizam os desenhos da fonte do projeto original.
+A abertura usa **SCREEN 5, 256 × 212 pixels**, com a arte de referência convertida para 16 cores do MSX2. A partida usa **SCREEN 4, 256 × 192 pixels**, gráficos em tiles, sprites coloridos sobrepostos e áudio PSG, com uma melodia original de fundo. Os textos da partida reutilizam a fonte original do projeto.
 
 ![Gameplay capturado no openMSX](previews/gameplay-openmsx-4x.png)
 
@@ -10,43 +10,50 @@ A ROM usa **SCREEN 4, 256 × 192 pixels**, gráficos em tiles, sprites coloridos
 
 Requisitos: MSX2 ou superior, ou emulador com BIOS compatível. Não funciona como jogo no MSX1; nesse modelo, a ROM apresenta a mensagem de que requer MSX2.
 
-A imagem [Sebollas.rom](Sebollas.rom) é um cartucho simples de **16 KiB**, com cabeçalho `AB` e origem em `0x4000`.
+A imagem [Sebollas.rom](Sebollas.rom) é um cartucho de **64 KiB, com mapper ASCII16**, com cabeçalho `AB` e origem em `0x4000`.
 
 ```sh
-openmsx -machine C-BIOS_MSX2 -cart Sebollas.rom
+openmsx -machine C-BIOS_MSX2 -cart Sebollas.rom -romtype ASCII16
 ```
 
-Também é possível carregar a ROM pela interface de outro emulador ou por um carregador de cartuchos compatível.
+Também é possível carregar a ROM pela interface de outro emulador ou por um carregador de cartuchos compatível, selecionando **ASCII16** quando necessário. A ROM usa o registrador espelhado `0x77FF`, reconhecido pelo [detector de mappers do openMSX](https://github.com/openMSX/openMSX/blob/master/src/memory/RomFactory.cc).
 
 | Controle | Ação |
 | --- | --- |
 | Espaço ou Enter, na abertura | Inicia `PLAY`. |
 | Setas | Move o Fusca em oito direções, com limites laterais da área de jogo. |
-| Espaço, na partida | Dispara; pode ser mantido pressionado. |
-| Espaço ou Enter, em GAME OVER ou na chegada | Retorna à abertura. Solte a tecla antes de iniciar novamente. |
+| Espaço, na partida | Buzina no ritmo “bi, biiii”; pode ser mantido pressionado. |
+| Espaço ou Enter, em GAME OVER ou nos créditos | Retorna à abertura. Solte a tecla antes de iniciar novamente. |
 
 O jogo lê o teclado pela BIOS. Joystick físico não está selecionado nesta versão.
 
 ### Regras
 
-- O percurso é finito: parte da casa `VAVA` e termina na casa `DESTINO`. Ao final, avance até o acesso central da casa para ver `CHEGAMOS!`.
-- A estrada se estreita antes das pontes. Sair da pista, atingir a margem ou entrar no rio custa uma vida e recoloca o carro no centro da estrada.
-- O tanque começa cheio, com **100 unidades**, e gasta uma unidade a cada 12 ticks (cerca de 24 segundos por tanque). Tanque vazio encerra a partida.
-- Existem **dois postos**, com bombas vermelhas e placas `POSTO`, à direita da estrada. Encoste no piso cinza junto às bombas para abastecer automaticamente; a rolagem pausa enquanto o tanque enche. A barra `GAS` fica vermelha abaixo de 21 unidades.
+- Após `PLAY`, o carro permanece parado, sem consumir combustível nem gerar obstáculos, até o primeiro comando de seta ou um novo pressionamento de Espaço. O Espaço usado no PLAY precisa ser solto primeiro.
+- São **três fases**. Em cada uma, avance até o acesso da casa ao fim do percurso. As fases 1 e 2 mostram a contagem animada do bônus, uma transição de dois segundos e seguem automaticamente para a próxima.
+- As fases mantêm a pontuação. Os queijos são convertidos em bônus ao final de cada etapa; a próxima começa com o contador zerado, tanque cheio e três corações. As paletas diferenciam cada etapa.
+- Cada fase tem mais vacas paradas: os intervalos de geração caem de 128 para 80 e depois para 48 ticks, respeitando o limite gráfico e a separação vertical entre elas. As vacas entram em **Y=16, no topo da área de jogo abaixo do HUD**, e descem exatamente oito pixels junto com cada passo do cenário. Ao abastecer, o cenário e as vacas pausam juntos.
+- Ao terminar o percurso da fase 3, o **garoto da garapa** lança canas na direção do carro. Desvie com as setas e buzine para atingi-lo. São necessárias **12 buzinadas completas**, e manter Espaço pressionado repete a sequência sem contar a mesma nota várias vezes.
+- Depois da vitória, o Fusca estaciona e saem três garotos, com tamanhos e silhuetas diferentes. Eles correm atrás do ônibus para Nova Iguaçu, embarcam e dão lugar aos créditos. Antes dessa animação, os queijos da fase 3 também são somados ao placar, após derrotar o garoto da garapa.
+- A estrada faz curvas sinuosas e se estreita antes das pontes. Sair da pista, atingir a margem ou entrar no rio custa uma vida e recoloca o carro no centro do trecho atual da estrada.
+- O tanque começa cheio, com **100 unidades**, e gasta uma unidade a cada 6 ticks (cerca de 12 segundos por tanque, acompanhando a rolagem mais rápida). Tanque vazio encerra a partida.
+- Existem **dois postos**, com bombas vermelhas e placas `POSTO`, à direita da estrada. Encoste no piso cinza junto às bombas para abastecer automaticamente; a rolagem pausa enquanto o tanque enche, acompanhada por pulsos sonoros que sobem de tom, inspirados no abastecimento de River Raid. O marcador `GAS`, inspirado em River Raid, tem escala `E`–`F` e ponteiro móvel. Abaixo de 21 unidades, o ponteiro fica vermelho e toca um alerta agudo de duas notas alternadas, no volume máximo do PSG; com 10 unidades ou menos o alerta fica mais rápido. A música cede o canal ao aviso, para ele permanecer audível. Abastecer interrompe os avisos.
+- Uma musiquinha original, em estilo chiptune rural, toca em loop e em volume baixo durante a partida. Ela pausa para a buzina, o abastecimento e os alertas, retomando depois. A melodia acompanha o final e os créditos, e para na abertura ou em GAME OVER.
 - O jogador começa com **três corações vermelhos**, que se apagam a cada batida.
 - Cada batida retira uma vida e concede **dois segundos de invulnerabilidade**, com o carro piscando.
 - A terceira batida mostra `GAME OVER` no centro do cenário da partida, mantendo a pontuação final no HUD.
-- Um tiro espanta a vaca, que passa a caminhar com o dobro da velocidade horizontal. A vaca usa uma pose fixa, espelhada conforme a direção, sem animação ao andar.
+- A buzina está uma oitava acima da versão anterior e toca um “bi” curto de 120 ms, uma pausa de 80 ms e um “biiii” longo de 480 ms, sem efeito visual. As vacas ficam paradas no meio da estrada até ouvirem a buzina. Ela alcança imediatamente as vacas próximas à frente do carro, que saem para uma das margens e liberam a passagem. A vaca usa uma pose fixa, espelhada conforme a direção, sem animação ao andar.
+- Queijos redondos, com fundo transparente, descem pela pista, girando e acompanhando suas curvas. Encoste o Fusca para recolhê-los. O painel mostra **QUEIJOS** com a quantidade, na segunda linha à direita do combustível, inclusive durante o abastecimento. Cada queijo vale **100 pontos**, creditados somente ao final da fase, sem somar duas vezes. Deixar um queijo passar não tira vida.
+- Na tela de bônus, o contador de queijos diminui um por vez, enquanto o bônus e o placar sobem de 100 em 100, com um bip por unidade e um acorde final. A fase 3 faz essa contagem depois do confronto da garapa.
 - Cada vaca espantada vale **100 pontos**, concedidos uma única vez.
-- Uma vaca que conclui a travessia sem ser atingida vale **10 pontos**.
-- Existem no máximo duas vacas e dois tiros ativos. A dificuldade é fixa.
+- Existem no máximo duas vacas e um queijo visíveis. A dificuldade é fixa.
 - As duas linhas superiores mostram a pontuação de oito dígitos, as vidas, o combustível e o trajeto; somente o cenário abaixo delas rola.
 
 ## Abertura
 
-![Abertura com a fonte original](previews/abertura-openmsx-4x.png)
+![Abertura baseada na imagem de referência](previews/abertura-openmsx-4x.png)
 
-`PLAY` pisca na abertura. Abaixo dele não há instruções nem outros textos. A transição exige que Espaço/Enter tenham sido soltos antes de um novo pressionamento, evitando reinícios e disparos involuntários.
+A abertura preserva o título, a cebola, a vegetação e a paisagem da imagem em `resources/title-reference.png`. A paleta é convertida para 16 cores de 3 bits por canal. No lugar das opções decorativas do anexo, há somente `PLAY`, que pisca sobre a paisagem, sem instruções adicionais. A transição exige que Espaço/Enter tenham sido soltos antes de um novo pressionamento, evitando reinícios e disparos involuntários.
 
 ## Três prévias
 
@@ -76,7 +83,7 @@ No PowerShell, usando a distribuição do assembler na pasta superior:
 ..\sjasmplus.exe Sebollas.asm
 ```
 
-A diretiva `OUTPUT` substitui `Sebollas.rom`. O fonte verifica o limite de `0x8000` com `ASSERT` e preenche o restante do cartucho com `0xFF`, até completar 16.384 bytes.
+A diretiva `OUTPUT` substitui `Sebollas.rom`. O cartucho usa quatro bancos de 16 KiB no mapper ASCII16, totalizando 65.536 bytes. O banco 0 mantém o código fixo, o banco 1 contém os recursos da partida e o banco 2 guarda a abertura; o banco 3 é reservado. O fonte verifica os limites de cada janela com `ASSERT`.
 
 A montagem foi validada com **SjASMPlus 1.21.0**, sem erros ou avisos.
 
@@ -86,6 +93,7 @@ Python 3 e Pillow são necessários somente para editar/recriar os recursos, ger
 
 ```sh
 python3 tools/build_assets.py
+python3 tools/build_title.py
 sjasmplus --sym=resources/generated/sebollas.sym Sebollas.asm
 python3 tools/render_previews.py
 ```
@@ -107,14 +115,20 @@ make captures         # capturas reais de abertura, jogo e GAME OVER
 
 | Arquivo ou pasta | Responsabilidade |
 | --- | --- |
-| `Sebollas.asm` | Cabeçalho, configuração do vídeo, estados, controles, tiros, vacas, colisões, cenário e composição dos sprites. |
-| `route.asm` | Combustível, abastecimento, colisão com terreno, chegada e barra do tanque. |
-| `bios.asm` | Endereços da BIOS e das tabelas de SCREEN 4. |
+| `Sebollas.asm` | Cabeçalho, configuração do vídeo, estados, controles, buzina, vacas, colisões, cenário e composição dos sprites. |
+| `campaign.asm` | Partida parada até o primeiro comando, três fases, garoto da garapa, canas, ônibus, três corredores e créditos. |
+| `route.asm` | Combustível, abastecimento, colisão com terreno, chegada e marcador com ponteiro. |
+| `cheese.asm` | Queijos rolando, coleta pendente de bônus e contador no HUD. |
+| `bonus.asm` | Conversão animada dos queijos em 100 pontos por unidade, som de contagem e acorde final. |
+| `bios.asm` | Endereços da BIOS e das tabelas de vídeo. |
+| `title.asm` | Abertura em SCREEN 5, descompressão RLE direta para VRAM e PLAY piscando. |
+| `tools/build_title.py` | Conversão da referência para a paleta do MSX2, bitmap e compressão da abertura. |
 | `ram_vars.asm` / `initRAM.asm` | Mapa e inicialização explícita da RAM e reinício da partida. |
 | `string.asm` | Impressão por coordenadas, conversão BCD e desenhos originais da fonte. |
 | `math.asm` | Rotinas aritméticas; a soma BCD é usada pela pontuação. |
+| `music.asm` | Melodia original de 32 eventos, em loop, com prioridade para os efeitos sonoros. |
 | `sfx.inc` | Efeitos PSG nos três canais e desligamento por contagem de ticks. |
-| `tools/build_assets.py` | Fonte, tiles rurais, mapa, paletas, carro, vacas, poeira e tiros. |
+| `tools/build_assets.py` | Fonte, tiles rurais, curvas do mapa, paletas, carro, vacas, queijos transparentes e poeira. |
 | `tools/render_previews.py` | Composição das prévias com os recursos reais. |
 | `resources/generated/` | Binários usados na ROM e dados locais de verificação. |
 | `tests/` | Restrições de hardware, testes das rotinas no openMSX e capturas. |
@@ -124,18 +138,18 @@ make captures         # capturas reais de abertura, jogo e GAME OVER
 
 ## Limites gráficos e implementação
 
-O cenário usa tiles de 8 × 8, com dois índices de cor por linha de oito pixels. O mapa tem 160 linhas, com início na linha 138 e fim na linha 0, sem repetição; a janela de 22 linhas avança oito pixels a cada 16 ticks. O percurso leva cerca de 45 segundos, mais o tempo de abastecimento e de aproximação final. Os bancos gráficos recebem a mesma fonte e os mesmos tiles, permitindo imprimir nas três regiões verticais.
+O cenário usa tiles de 8 × 8, com dois índices de cor por linha de oito pixels. O centro da pista varia até 64 pixels entre as curvas, e os queijos acompanham esses deslocamentos. O mapa tem 160 linhas, com início na linha 138 e fim na linha 0, sem repetição; a janela de 22 linhas avança oito pixels a cada 8 ticks, o dobro da velocidade anterior. O deslocamento lateral do carro também acompanha esse aumento. O percurso leva cerca de 22 segundos, mais o tempo de abastecimento e de aproximação final. Os bancos gráficos recebem a mesma fonte e os mesmos tiles, permitindo imprimir nas três regiões verticais.
 
 | Elemento | Composição |
 | --- | --- |
 | Fusca 16 × 32 | Seis sprites: três camadas em cada metade de 16 × 16. |
-| Vaca 32 × 32 | Oito sprites: duas camadas por quadrante, com cores por linha para corpo e focinho. Uma pose fixa, nos dois sentidos. |
+| Vaca 32 × 32 | Oito sprites: duas camadas por quadrante, com combinação de cores CC para conservar preto, branco e rosa da imagem `resources/cow-reference.png`. Uma pose fixa, nos dois sentidos. |
 | Poeira | Um sprite de 16 × 16, com quatro quadros, colocado logo após a traseira. |
-| Cada tiro | Um sprite de 16 × 16, com desenho visível de 2 × 5 pixels. |
+| Queijo | Um sprite transparente de 16 × 16, com dois quadros de rotação. |
 
-As vacas ficam separadas verticalmente por pelo menos 48 pixels e os tiros por pelo menos 16 pixels. Carro e poeira não compartilham linhas. Assim, o pior caso usa quatro entradas de uma vaca, três do carro e uma de tiro: **oito sprites por linha**, sem alternância de camadas por excesso. A piscada de invulnerabilidade é intencional.
+As vacas ficam separadas verticalmente por pelo menos 48 pixels. Carro e poeira não compartilham linhas. Assim, o pior caso usa quatro entradas de uma vaca, três do carro e uma do queijo: **oito sprites por linha**, sem alternância de camadas por excesso. A piscada de invulnerabilidade é intencional.
 
-A capacidade máxima é de **25 entradas de sprite** e **27 padrões de 16 × 16**. A RAM de trabalho fica em `0xC000–0xC6FF`; os atributos e cores são preparados em RAM antes do envio à VRAM.
+O jogo usa **58 padrões de 16 × 16**. A estrada tem no máximo **24 entradas de sprite**; o confronto e a animação final também respeitam os limites de 32 entradas e oito sprites por linha. A RAM de trabalho fica em `0xC000–0xC6FF`; os atributos e cores são preparados em RAM antes do envio à VRAM.
 
 | VRAM | Uso |
 | --- | --- |
@@ -146,21 +160,34 @@ A capacidade máxima é de **25 entradas de sprite** e **27 padrões de 16 × 16
 | `0x2000–0x37FF` | Três bancos de cores dos tiles. |
 | `0x3800–0x3FFF` | Padrões dos sprites. |
 
-A lógica roda a 50 ticks por segundo. Em vídeo de 60 Hz, um de cada seis VBlanks não avança a lógica. As colisões usam caixas reduzidas em software: a sobreposição das camadas do carro, a poeira e os pixels transparentes dos tiros não provocam batidas.
+A combinação de cores da vaca usa o bit CC do V9938: preto 6, rosa 9 e branco 15 por OR, conforme o [manual técnico da Yamaha](https://map.grauw.nl/resources/video/yamaha_v9938.pdf).
+
+A lógica roda a 50 ticks por segundo. Em vídeo de 60 Hz, um de cada seis VBlanks não avança a lógica. As colisões usam caixas reduzidas em software: a sobreposição das camadas do carro, a poeira e a área da buzina não provocam batidas.
 
 ## Verificação realizada
 
-- Montagem sem erros ou avisos; cartucho de 16 KiB.
-- **Sete testes Python**: fonte original, paletas, endereços de VRAM, máscaras, direções da vaca, percurso e pontos de interesse, ROM e limite de sprites.
-- **62 casos de rotinas Z80 em cada frequência**, no openMSX 17.0 com C-BIOS MSX2 de 50 e 60 Hz: oito direções, bordas, tiros, vacas, pontuação BCD, três vidas, invulnerabilidade, menu, áudio, combustível, postos, pontes, terreno e chegada.
-- Dois testes contínuos de aproximadamente 30 segundos, com direção e tiros: **zero quadros com excesso de sprites**, máximo observado de oito por linha.
-- Duas viagens completas, em 50 e 60 Hz, com direção pelas teclas e abastecimento nos dois postos, chegando ao destino com combustível. O teste isola a viagem das batidas com vacas.
-- Capturas reais de [abertura](previews/abertura-openmsx.png), [gameplay](previews/gameplay-openmsx.png) e [GAME OVER](previews/gameover-openmsx.png), além de [ponte](previews/ponte-openmsx.png), [posto](previews/posto-openmsx.png) e [chegada](previews/chegada-openmsx.png).
-- Comparação da VRAM capturada com os padrões, cores, paleta e fonte empacotados na ROM.
+- Montagem sem erros ou avisos; cartucho ASCII16 de 64 KiB.
+- **Doze testes Python**: fonte original, paletas, endereços de VRAM, máscaras, direções e fidelidade às cores da vaca, percurso e pontos de interesse, ROM, compressão da abertura, texto integral dos créditos, tamanhos dos três corredores e limite de sprites.
+- **144 casos de rotinas Z80 em cada frequência**, no openMSX 17.0 com C-BIOS MSX2 de 50 e 60 Hz: oito direções, bordas, alcance da buzina, vacas, abertura em SCREEN 5, transição para a partida, pontuação BCD, três vidas, invulnerabilidade, menu, áudio, combustível, alerta, marcador, sequência da buzina, som de abastecimento, música e prioridade dos efeitos, coleta de queijos, postos, pontes, terreno e chegada, espera inicial, sequência das fases, canas, resistência do chefe, embarque, créditos e limite de sprites da animação, entrada das vacas no topo, sincronismo com o cenário e soma animada dos queijos.
+- Dois testes contínuos de aproximadamente 30 segundos, com direção e buzina: **zero quadros com excesso de sprites**, máximo observado de oito por linha.
+- Duas viagens da fase 1, em 50 e 60 Hz, isolando o percurso e os dois postos das batidas com vacas.
+- **Duas campanhas completas por comandos de teclado, sem alterar vida, combustível, posição ou resistência do chefe**: três fases, seis postos, 12 acertos de buzina no chefe, corrida atrás do ônibus e chegada aos créditos. Os testes verificam um número crescente de vacas, as três telas de bônus e cada conversão de queijo em exatamente 100 pontos, com zero excesso de sprites em 50 e 60 Hz.
+- Capturas reais de [abertura](previews/abertura-openmsx.png), [gameplay](previews/gameplay-openmsx.png) e [GAME OVER](previews/gameover-openmsx.png), além de [ponte](previews/ponte-openmsx.png), [posto](previews/posto-openmsx.png) e [chegada](previews/chegada-openmsx.png), além de uma [cena com queijo transparente e vaca](previews/queijos-openmsx.png), [garapa](previews/garapa-openmsx.png), [corrida até o ônibus](previews/onibus-openmsx.png) , [créditos](previews/creditos-openmsx.png) e [contagem animada do bônus](previews/bonus-openmsx.png).
+- Comparação da VRAM capturada com os padrões, cores, paleta e fonte empacotados na ROM; comparação completa do bitmap e da paleta da abertura com os recursos convertidos, respeitando a área piscante do PLAY.
 
-Os relatórios locais são gerados em `resources/generated/emulator-50.txt`, `emulator-60.txt`, `stress-50.txt`, `stress-60.txt`, `route-50.txt` e `route-60.txt`. O teste de áudio verifica os registradores e o desligamento dos canais; não houve avaliação auditiva ou teste em hardware físico.
+Os relatórios locais são gerados em `resources/generated/emulator-50.txt`, `emulator-60.txt`, `stress-50.txt`, `stress-60.txt`, `route-50.txt`, `route-60.txt`, `campaign-50.txt` e `campaign-60.txt`. O teste de áudio verifica os registradores e o desligamento dos canais; não houve avaliação auditiva ou teste em hardware físico.
 
 Neste ambiente, o openMSX precisa ser executado fora do sandbox para iniciar corretamente. Esse requisito é do ambiente de desenvolvimento, não da ROM.
+
+## Créditos finais
+
+A tela usa fonte bitmap de 8 × 8 no estilo Konami, baseada nos caracteres do projeto e complementada com minúsculas, pontuação e acentos. O texto, preservado com quebra de linhas, é:
+
+> Essa foi a aventura de Argon, Gordinho (Leto) e Robson em sua jornada de Nova Iguaçu até o Sebollas.
+>
+> Obrigado amigos, pelas boas memórias.
+>
+> By Robson Velloso
 
 ## Licença
 

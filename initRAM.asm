@@ -10,46 +10,83 @@ InitVarsAtRAM:
     ret
 
 ResetGame:
+    call SetupGameVideo
+    xor a
+    ld (_cheeseCount),a
+    ld hl,_scoreBCD_8Digits
+    ld b,4
+.score:
+    ld (hl),a
+    inc hl
+    djnz .score
+    ld a,1
+    ld (_stage),a
+    jp BeginStage
+
+BeginStage:
+    call InitSound
+    xor a
+    ld (_invulnerable),a
+    ld (_scrollClock),a
+    ld (_tick),a
+    ld (_nextDirection),a
+    ld (_fuelClock),a
+    ld (_refueling),a
+    ld (_fuelAlertClock),a
+    ld (_fuelAlertPitch),a
+    ld (_hornPhase),a
+    ld (_hornClock),a
+    ld (_musicStep),a
+    ld (_musicClock),a
+    ld (_musicPeriod),a
+    ld (_musicPeriod+1),a
+    ld (_cheese),a
+    ld (_driveStarted),a
+    ld (_driveArmed),a
+    ld (_caneActive),a
+    ld (_effectTime),a
+    ld (_effectTime+1),a
+    ld (_effectTime+2),a
+    ld hl,_cows
+    ld de,_cows+1
+    ld (hl),a
+    ld bc,15
+    ldir
     ld a,1
     ld (_state),a
+    ld (_spawnClock),a
     ld a,120
     ld (_carX),a
     ld a,128
     ld (_carY),a
     ld a,3
     ld (_lives),a
-    xor a
-    ld (_invulnerable),a
-    ld (_fireWait),a
-    ld (_scrollClock),a
-    ld (_mapRow),a
-    ld (_tick),a
-    ld (_nextDirection),a
-    ld (_fuelClock),a
-    ld (_refueling),a
+    ld a,48
+    ld (_cheeseClock),a
     ld a,138
     ld (_mapRow),a
     ld a,100
     ld (_fuel),a
-    xor a
-    ld hl,_cows
-    ld de,_cows+1
-    ld (hl),a
-    ld bc,23
-    ldir
-    ld hl,_scoreBCD_8Digits
-    ld (hl),a
-    inc hl
-    ld (hl),a
-    inc hl
-    ld (hl),a
-    inc hl
-    ld (hl),a
+    ld a,(_stage)
+    cp 1
+    jr z,.video
     ld a,1
-    ld (_spawnClock),a
+    ld (_driveStarted),a
+    ld (_driveArmed),a
+.video:
+    call ApplyStagePalette
     ld hl,NAMTBL
     ld bc,64
     ld a,32
     call FILVRM
     call DrawWorld
-    jp DrawHUD
+    call DrawHUD
+    ld a,(_driveStarted)
+    or a
+    jr nz,.sprites
+    ld de,DrivePrompt
+    ld bc,1504h
+    call PutText
+.sprites:
+    call BuildSprites
+    jp UploadSprites

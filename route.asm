@@ -31,6 +31,9 @@ CarTerrain:
     ret
 
 UpdateJourney:
+    ld a,(_driveStarted)
+    or a
+    ret z
     xor a
     ld (_refueling),a
     call CarTerrain
@@ -58,11 +61,14 @@ UpdateJourney:
     ld (_refueling),a
     xor a
     ld (_fuelClock),a
+    ld a,(_tick)
+    and 3
+    call z,SoundRefuel
     ret
 .consume:
     ld a,(_fuelClock)
     inc a
-    cp 12
+    cp 6
     jr c,.saveClock
     xor a
     ld (_fuelClock),a
@@ -88,7 +94,8 @@ UpdateJourney:
     ld a,(_invulnerable)
     or a
     ret nz
-    ld a,120
+    ld a,(_terrainRow)
+    call RoadCenter
     ld (_carX),a
     jp LoseLife
 .arrival:
@@ -103,9 +110,7 @@ UpdateJourney:
     ret c
     cp 137
     ret nc
-    ld a,3
-    ld (_state),a
-    jp ShowGameOver
+    jp CompleteStage
 .empty:
     ld a,2
     ld (_state),a
@@ -122,47 +127,58 @@ LoseLife:
     ld (_state),a
     jp ShowGameOver
 
+RoadCenter:
+    ld e,a
+    ld d,0
+    ld hl,RoadCenters
+    add hl,de
+    ld a,(hl)
+    ret
+
 DrawFuel:
     ld de,FuelLabel
     ld bc,0101h
     call PutText
-    ld hl,NAMTBL+32+5
+    ld de,GaugeEmpty
+    ld bc,0105h
+    call PutText
+    ld de,GaugeFull
+    ld bc,0110h
+    call PutText
+    ld hl,NAMTBL+32+6
+    ld bc,10
+    ld a,168
+    call FILVRM
     ld a,(_fuel)
-    ld c,a
-    ld b,10
-.bar:
-    ld a,c
-    or a
-    ld a,143
-    jr z,.tile
+    cp 100
+    jr c,.divide
+    ld a,99
+.divide:
+    ld b,0
+.tens:
+    cp 10
+    jr c,.offset
+    sub 10
+    inc b
+    jr .tens
+.offset:
+    ld e,a
+    ld d,0
+    ld hl,NeedleOffsets
+    add hl,de
+    ld c,(hl)
     ld a,(_fuel)
     cp 21
-    ld a,142
-    jr nc,.filled
-    ld a,144
-.filled:
-    ld d,a
-    ld a,c
-    sub 10
-    jr nc,.remaining
-    xor a
-.remaining:
-    ld c,a
-    ld a,d
-.tile:
-    push bc
-    push hl
+    ld a,169
+    jr nc,.needle
+    ld a,177
+.needle:
+    add a,c
+    push af
+    ld e,b
+    ld d,0
+    ld hl,NAMTBL+32+6
+    add hl,de
+    pop af
     call WRTVRM
-    pop hl
-    pop bc
-    inc hl
-    djnz .bar
-    ld de,RouteLabel
-    ld bc,0111h
-    call PutText
-    ld a,(_refueling)
-    or a
-    ret z
-    ld de,RefuelLabel
-    ld bc,0111h
-    jp PutText
+    ret
