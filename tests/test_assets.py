@@ -12,12 +12,13 @@ class Assets(unittest.TestCase):
         for i,ch in enumerate(a.META['font_chars']):
             self.assertEqual(a.PAT[ch*8:ch*8+8],old[i*8:i*8+8])
         self.assertTrue(all(x in a.META["font_chars"]+a.META["extra_font_chars"] or 128<=x<=158 for x in a.WORLD))
+        self.assertNotEqual(a.PAT[63*8:64*8],bytes(8))
     def test_route_landmarks_and_safe_center(self):
         rows=[a.WORLD[y*32:(y+1)*32] for y in range(160)]
         self.assertEqual(bytes(rows[147][1:5]),'VAVÁ'.encode('latin-1'))
-        self.assertEqual(bytes(rows[1][13:20]),b'DESTINO')
+        self.assertNotIn(b'DESTINO',a.WORLD)
         for y,row in enumerate(rows[7:147],7):
-            self.assertIn(row[a.META["road_centers"][y]//8],(130,131,146,157))
+            self.assertIn(row[a.META["road_centers"][y]//8],(130,131,146,157,159))
         self.assertGreaterEqual(max(a.META["road_centers"])-min(a.META["road_centers"]),56)
         for y in (54,110):
             self.assertEqual(bytes(rows[y-3][24:29]),b'POSTO')
@@ -143,35 +144,48 @@ class Assets(unittest.TestCase):
         for row in range(160):
             left,right=bounds[row*2:row*2+2]
             self.assertLessEqual(left,right)
-            self.assertTrue(all(a.WORLD[row*32+col] in (130,131,146,157)
+            self.assertTrue(all(a.WORLD[row*32+col] in (130,131,146,157,159)
                                 for col in range(left//8,(right+15)//8+1)))
         for row in range(139):
             for y in range(32,145):
                 spans=[bounds[r*2:r*2+2] for r in range(row+y//8-2,row+(y+31)//8-1)]
                 self.assertLessEqual(max(s[0] for s in spans),min(s[1] for s in spans))
-    def test_three_distinct_routes_and_fixed_cheese_color(self):
-        routes={stage:(ROOT/f'resources/generated/world{suffix}.bin').read_bytes()
-                for stage,suffix in ((1,'1'),(2,''),(3,'3'))}
-        centers=[(ROOT/f'resources/generated/road_centers{suffix}.bin').read_bytes()
-                 for suffix in ('1','','3')]
-        self.assertEqual(len(set(centers[0])),1)
-        self.assertGreater(len(set(centers[1])),5)
-        self.assertNotIn(145,routes[1]); self.assertNotIn(146,routes[1])
-        self.assertIn(145,routes[2]); self.assertIn(146,routes[2])
-        for row in range(20,148):
-            widths=[sum(t in (130,131,146) for t in routes[stage][row*32:row*32+32]) for stage in (1,3)]
-            self.assertLess(widths[1],widths[0])
+    def test_four_stage_routes_and_fixed_cheese_color(self):
+        data=ROOT/'resources/generated'
+        for stage,suffix in ((0,'0'),(1,'1'),(2,''),(3,'3')):
+            world=(data/f'world{suffix}.bin').read_bytes()
+            centers=(data/f'road_centers{suffix}.bin').read_bytes()
+            self.assertGreater(len(set(centers)),3)
+            self.assertIn(145,world); self.assertIn(146,world)
+            if stage<2:
+                self.assertNotIn(b'VAV',world); self.assertIn(b'PESCA',world); self.assertIn(159,world)
+            elif stage==2: self.assertIn(b'BAR',world)
+            bundle=(data/f'route{stage}.bin').read_bytes()
+            self.assertEqual(len(bundle),5600)
+            self.assertEqual(bundle[:5120],world)
+        self.assertEqual(len((data/'trio_patterns.bin').read_bytes()),256)
+        self.assertEqual(len((data/'trio_colors.bin').read_bytes()),128)
         for stage in range(3):
             self.assertEqual(a.META['palettes'][stage][10],a.META['palettes'][0][10])
+    def test_cheese_enemy_graphics_fit_shared_vram_slots(self):
+        data=ROOT/'resources/generated'
+        self.assertEqual(len((data/'cheese_boss_patterns.bin').read_bytes()),256)
+        self.assertEqual(len((data/'cheese_boss_colors.bin').read_bytes()),128)
+        self.assertEqual(len((data/'enemy_cheese_patterns.bin').read_bytes()),64)
+        self.assertEqual(len((data/'enemy_cheese_colors.bin').read_bytes()),32)
+        for suffix in ('1','','3'):
+            world=(data/f'world{suffix}.bin').read_bytes()
+            self.assertNotIn(b'DESTINO',world)
+            if suffix!='': self.assertTrue(all(tile not in range(148,154) for tile in world[:20*32]))
     def test_ending_art_native_pixels_and_rom_banks(self):
         from PIL import Image
         rom=(ROOT/'Sebollas.rom').read_bytes()
-        for number,offset in ((1,0x10000),(2,0x20000)):
-            source=Image.open(ROOT/f'resources/ending-{number}-reference.png').convert('RGB')
+        for kind,number,offset in (("ending",1,0x10000),("ending",2,0x20000),("intro",1,0x30000),("intro",2,0x40000),("intro",3,0x50000),("intro",0,0x70000)):
+            source=Image.open(ROOT/f'resources/{kind}-{number}-reference.png').convert('RGB')
             self.assertEqual(source.size,(256,212))
             expected=bytes((round(g*7/255)<<5)|(round(r*7/255)<<2)|round(b*3/255)
                            for r,g,b in source.getdata())
-            data=(ROOT/f'resources/generated/ending{number}.bin').read_bytes()
+            data=(ROOT/f'resources/generated/{kind}{number}.bin').read_bytes()
             self.assertEqual(len(data),54272)
             self.assertEqual(data,expected)
             self.assertEqual(rom[offset:offset+len(data)],data)
@@ -181,7 +195,7 @@ class Assets(unittest.TestCase):
             self.assertEqual(im.size,(256,192))
             self.assertLessEqual(len(im.getcolors()),16)
         rom=(ROOT/'Sebollas.rom').read_bytes()
-        self.assertEqual(len(rom),262144)
+        self.assertEqual(len(rom),524288)
         self.assertEqual(rom[:2],b'AB')
         entry=int.from_bytes(rom[2:4],'little')
         self.assertTrue(0x4010<=entry<0x8000)

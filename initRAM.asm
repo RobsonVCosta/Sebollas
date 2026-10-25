@@ -19,11 +19,14 @@ ResetGame:
     ld (hl),a
     inc hl
     djnz .score
-    ld a,1
+    xor a
     ld (_stage),a
-    jp BeginStage
+    jp ShowStageCard
 
 BeginStage:
+    call SetupGameVideo
+    call LoadStageMap
+    call LoadWalkingArt
     call InitSound
     xor a
     ld (_invulnerable),a
@@ -58,9 +61,15 @@ BeginStage:
     ld (_spawnClock),a
     ld a,120
     ld (_carX),a
+    ld a,(_stage)
+    cp 2
+    jr nc,.position
+    ld a,112
+    ld (_carX),a
+.position:
     ld a,128
     ld (_carY),a
-    ld a,3
+    ld a,5
     ld (_lives),a
     ld a,48
     ld (_cheeseClock),a
@@ -69,7 +78,7 @@ BeginStage:
     ld a,100
     ld (_fuel),a
     ld a,(_stage)
-    cp 1
+    or a
     jr z,.video
     ld a,1
     ld (_driveStarted),a

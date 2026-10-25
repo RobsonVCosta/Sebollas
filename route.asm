@@ -17,8 +17,14 @@ CarTerrain:
     add hl,hl
     add hl,hl
     add hl,hl
+    ld a,(_stage)
+    cp 2
+    ld b,8
+    jr nc,.axle
+    ld b,16
+.axle:
     ld a,(_carX)
-    add a,8
+    add a,b
     srl a
     srl a
     srl a
@@ -38,7 +44,10 @@ UpdateJourney:
     ld (_refueling),a
     call CarTerrain
     cp 157
+    jr z,.platform
+    cp 159
     jr nz,.consume
+.platform:
     ld a,(_carX)
     cp 160
     jr c,.consume
@@ -66,21 +75,10 @@ UpdateJourney:
     call z,SoundRefuel
     ret
 .consume:
-    ld a,(_fuelClock)
-    inc a
-    cp 6
-    jr c,.saveClock
-    xor a
-    ld (_fuelClock),a
-    ld hl,_fuel
-    ld a,(hl)
-    or a
-    jr z,.empty
-    dec (hl)
-    jr z,.empty
-    jr .terrain
-.saveClock:
-    ld (_fuelClock),a
+    call ConsumeFuel
+    ld a,(_state)
+    cp 1
+    ret nz
 .terrain:
     call ClampCarToRoad
     call CarTerrain
@@ -91,6 +89,8 @@ UpdateJourney:
     cp 146
     jr z,.arrival
     cp 157
+    jr z,.arrival
+    cp 159
     jr z,.arrival
     ret
 .arrival:
@@ -106,10 +106,6 @@ UpdateJourney:
     cp 137
     ret nc
     jp CompleteStage
-.empty:
-    ld a,2
-    ld (_state),a
-    jp ShowGameOver
 
 LoseLife:
     ld a,100
@@ -132,15 +128,20 @@ RoadCenter:
 
 DrawFuel:
     ld de,FuelLabel
+    ld a,(_stage)
+    cp 2
+    jr nc,.label
+    ld de,HungerLabel
+.label:
     ld bc,0101h
     call PutText
     ld de,GaugeEmpty
-    ld bc,0105h
+    ld bc,0106h
     call PutText
     ld de,GaugeFull
-    ld bc,0110h
+    ld bc,0111h
     call PutText
-    ld hl,NAMTBL+32+6
+    ld hl,NAMTBL+32+7
     ld bc,10
     ld a,168
     call FILVRM
@@ -172,7 +173,7 @@ DrawFuel:
     push af
     ld e,b
     ld d,0
-    ld hl,NAMTBL+32+6
+    ld hl,NAMTBL+32+7
     add hl,de
     pop af
     call WRTVRM
@@ -183,6 +184,8 @@ DrawFuel:
 ClampCarToRoad:
     ld a,(_state)
     cp 4
+    jp z,.arena
+    cp 12
     jp z,.arena
     cp 1
     ret nz
@@ -239,11 +242,36 @@ ClampCarToRoad:
     jr nz,.row
     jr .clamp
 .arena:
+    ld a,(_stage)
+    cp 3
+    jr z,.arenaY
+    ld a,(_state)
+    cp 12
+    jr nz,.arenaX
+.arenaY:
+    ld a,(_carY)
+    cp 80
+    jr nc,.arenaX
+    ld a,80
+    ld (_carY),a
+.arenaX:
     ld a,64
     ld (_roadMinX),a
+    ld a,(_carY)
+    cp 112
     ld a,176
+    jr c,.arenaLimit
+    ld a,240
+.arenaLimit:
     ld (_roadMaxX),a
 .clamp:
+    ld a,(_stage)
+    cp 2
+    jr nc,.widthReady
+    ld a,(_roadMaxX)
+    sub 16
+    ld (_roadMaxX),a
+.widthReady:
     ld a,(_roadMinX)
     ld b,a
     ld a,(_carX)
@@ -262,32 +290,68 @@ ClampCarToRoad:
 
 ; Stage-specific maps share the same houses, stations and finite route length.
 GetWorldMap:
-    ld de,WorldMap1
-    ld a,(_stage)
-    cp 1
-    ret z
-    ld de,WorldMap3
-    cp 3
-    ret z
     ld de,WorldMap
     ret
 GetRoadCenters:
-    ld hl,RoadCenters1
-    ld a,(_stage)
-    cp 1
-    ret z
-    ld hl,RoadCenters3
-    cp 3
-    ret z
     ld hl,RoadCenters
     ret
 GetRoadBounds:
-    ld hl,RoadBounds1
-    ld a,(_stage)
-    cp 1
-    ret z
-    ld hl,RoadBounds3
-    cp 3
-    ret z
     ld hl,RoadBounds
+    ret
+
+LoadStageMap:
+    ld a,(_stage)
+    add a,48
+    ld (07000h),a
+    ld hl,08000h
+    ld de,WorldMap
+    ld bc,5600
+    ldir
+    ld a,2
+    ld (07000h),a
+    ret
+
+; One unit per 12 game ticks: half the former road consumption.
+ConsumeFuel:
+    ld a,(_fuelClock)
+    inc a
+    cp 12
+    jr c,.save
+    xor a
+    ld (_fuelClock),a
+    ld hl,_fuel
+    ld a,(hl)
+    or a
+    jr z,.empty
+    dec (hl)
+    ret nz
+.empty:
+    ld a,2
+    ld (_state),a
+    jp ShowGameOver
+.save:
+    ld (_fuelClock),a
+    ret
+
+UpdateBossFuel:
+    xor a
+    ld (_refueling),a
+    ld a,(_carX)
+    cp 192
+    jp c,ConsumeFuel
+    ld a,(_carY)
+    cp 112
+    jp c,ConsumeFuel
+    ld a,(_fuel)
+    cp 100
+    ret nc
+    inc a
+    ld (_fuel),a
+    ld a,1
+    ld (_refueling),a
+    xor a
+    ld (_fuelClock),a
+    ld a,(_tick)
+    and 3
+    jp z,SoundRefuel
     ret

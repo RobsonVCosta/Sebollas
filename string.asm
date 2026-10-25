@@ -106,6 +106,10 @@ _ascii: DB $00,$00,$00,$00,$00,$00,$00,$00 ;Space
         DB $00,$7F,$07,$0E,$1C,$38,$70,$7F ;Z
 
 
+ ; Interrogação: código ASCII 63, usado por PutText como '?'.
+QuestionMarkGlyph:
+    db $3C,$66,$06,$0C,$18,$00,$18,$00 ; ?
+
 ; --- cores por linha: (BG<<4 | FG). Ex.: BG=1 (azul escuro), FG=14 (amarelo) ---
 _Ascii_Color: defs 400, $f0
 

@@ -29,8 +29,8 @@ START:
     halt
     jr .stop
 .msx2:
-    ; ASCII8 powers up with bank 0 in every window. Keep all executable code
-    ; in 4000-5FFF and map the next resource bank before reading any assets.
+    ; ASCII8 powers up with bank 0 in every window. Code uses 4000-7FFF;
+    ; fix its second 8 KiB bank before calling code or reading resources.
     ld a,1
     ld (06800h),a
     call MapCartridgePage2
@@ -316,6 +316,14 @@ MovePlayer:
     jr z,.downTest
     dec a
     ld (_carY),a
+    ld a,(_stage)
+    cp 2
+    jr nc,.downTest
+    ld a,(_carY)
+    cp 32
+    jr z,.downTest
+    dec a
+    ld (_carY),a
 .downTest:
     ld a,(_direction)
     cp 4
@@ -325,6 +333,14 @@ MovePlayer:
     cp 6
     jr nz,.leftTest
 .down:
+    ld a,(_carY)
+    cp 144
+    jr z,.leftTest
+    inc a
+    ld (_carY),a
+    ld a,(_stage)
+    cp 2
+    jr nc,.leftTest
     ld a,(_carY)
     cp 144
     jr z,.leftTest
@@ -354,7 +370,7 @@ MovePlayer:
     jr nz,.invulnerability
 .right:
     ld a,(_carX)
-    cp 208
+    cp 240
     jr z,.invulnerability
     add a,2
     ld (_carX),a
@@ -368,6 +384,9 @@ MovePlayer:
     ret
 
 UpdateHornInput:
+    ld a,(_stage)
+    cp 2
+    ret c
     xor a
     call GTTRIG
     or a
@@ -441,6 +460,9 @@ UpdateScroll:
     ld a,(ix+0)
     or a
     ret z
+    ld a,(ix+6)
+    or a
+    ret nz
     ld a,(ix+2)
     add a,8
     ld (ix+2),a
@@ -450,6 +472,9 @@ UpdateScroll:
     ret
 
 UpdateCows:
+    ld a,(_stage)
+    cp 2
+    jp c,UpdateWalkingCows
     ld a,(_driveStarted)
     or a
     ret z
@@ -551,6 +576,13 @@ UpdateCows:
     call RoadCenter
     pop ix
     sub 8 ; RoadCenter is the top-left of a 16px car, not a 32px cow
+    ld b,a
+    ld a,(ix+5)
+    or a
+    ld a,b
+    jr z,.place
+    sub 16 ; resistant cows leave a clear passing lane on their right
+.place:
     ld (ix+1),a
     ret
 .walk:
@@ -603,10 +635,18 @@ CheckHits:
     or a
     ret nz
     ; Car reduced box 12x24, cow reduced box 24x24.
+    ld a,(_stage)
+    cp 2
+    ld b,10
+    ld c,36
+    jr nc,.body
+    ld b,23
+    ld c,47
+.body:
     ld a,(_carX)
     sub (ix+1)
-    add a,10
-    cp 36
+    add a,b
+    cp c
     ret nc
     ld a,(_carY)
     sub (ix+2)
@@ -636,8 +676,8 @@ DrawHUD:
     ld de,_score
     ld bc,0007h
     call PutText
-    ld hl,NAMTBL+29
-    ld b,3
+    ld hl,NAMTBL+27
+    ld b,5
     ld a,(_lives)
     ld c,a
 .hearts:
@@ -723,6 +763,30 @@ AppendSprite:
     add hl,hl
     add hl,hl
     ld bc,SpriteLineColors
+    ld d,a
+    ld a,(_stage)
+    cp 2
+    jr nc,.motorColors
+    ld a,d
+    cp 8
+    jr nc,.colors
+    ld bc,TrioColors
+    jr .colors
+.motorColors:
+    ld a,(_stage)
+    cp 3
+    jr nz,.colors
+    ld a,(_state)
+    cp 4
+    jr nz,.colors
+    ld a,d
+    cp BOSS_PATTERN/4
+    jr c,.colors
+    cp CANE_PATTERN/4+2
+    jr nc,.colors
+    ld bc,CheeseBossColors-BOSS_PATTERN*4
+.colors:
+    ld a,d
     add hl,bc
     ld de,(_colorPtr)
     ld bc,16
@@ -777,6 +841,12 @@ BuildSprites:
     and 4
     jr nz,.dust
 .car:
+    ld a,(_stage)
+    cp 2
+    jr nc,.motorCar
+    call DrawWalkingPlayer
+    jp .cows
+.motorCar:
     ld a,(_carY)
     ld d,a
     ld a,(_carX)
@@ -798,6 +868,9 @@ BuildSprites:
     pop bc
     djnz .half
 .dust:
+    ld a,(_stage)
+    cp 2
+    jr c,.cows
     ld a,(_driveStarted)
     or a
     jr z,.cows
@@ -831,6 +904,7 @@ DrawCow:
     add a,a
     add a,a
     add a,COW_PATTERN/4
+DrawLargeSprite:
     ld (_spriteBase),a
     ld a,(ix+2)
     ld (_drawY),a
@@ -884,6 +958,7 @@ UploadSprites:
     include music.asm
     include title.asm
     include ending_art.asm
+    include walking.asm
 TitleText: db "SEBOLLAS",0
 SubtitleText: db "AVENTURA NA FAZENDA",0
 PlayText: db "PLAY",0
@@ -900,23 +975,21 @@ MSX2Message: db "SEBOLLAS REQUER MSX2",13,10,0
 TenBCD: db 0,0,0,010h
 HundredBCD: db 0,0,1,0
 CodeEnd:
-    ASSERT CodeEnd < 6000h
+    ASSERT CodeEnd < 8000h
 TilePatterns: incbin "resources/generated/patterns.bin"
 TileColors: incbin "resources/generated/colors.bin"
-WorldMap: incbin "resources/generated/world.bin"
-RoadCenters: incbin "resources/generated/road_centers.bin"
-RoadBounds: incbin "resources/generated/road_bounds.bin"
 SpritePatterns: incbin "resources/generated/sprites.bin"
 SpriteLineColors: incbin "resources/generated/sprite_colors.bin"
 GamePalette: incbin "resources/generated/palette0.bin"
 StagePalette1: incbin "resources/generated/palette1.bin"
 StagePalette2: incbin "resources/generated/palette2.bin"
-WorldMap1: incbin "resources/generated/world1.bin"
-RoadCenters1: incbin "resources/generated/road_centers1.bin"
-RoadBounds1: incbin "resources/generated/road_bounds1.bin"
-WorldMap3: incbin "resources/generated/world3.bin"
-RoadCenters3: incbin "resources/generated/road_centers3.bin"
-RoadBounds3: incbin "resources/generated/road_bounds3.bin"
+CheeseBossPatterns: incbin "resources/generated/cheese_boss_patterns.bin"
+EnemyCheesePatterns: incbin "resources/generated/enemy_cheese_patterns.bin"
+CheeseBossColors: incbin "resources/generated/cheese_boss_colors.bin"
+EnemyCheeseColors: incbin "resources/generated/enemy_cheese_colors.bin"
+CheeseFightPalette: incbin "resources/generated/cheese_fight_palette.bin"
+TrioPatterns: incbin "resources/generated/trio_patterns.bin"
+TrioColors: incbin "resources/generated/trio_colors.bin"
 GameDataEnd:
     ASSERT GameDataEnd <= 0C000h
     defs 0C000h-$,0FFh
@@ -940,4 +1013,28 @@ TitleBankEnd:
     incbin "resources/generated/ending2.bin"
     defs 10000h-$,0FFh
     org 0
-    defs 10000h,0FFh ; reserved; power-of-two 256 KiB cartridge
+    incbin "resources/generated/intro1.bin" ; bank 24
+    defs 10000h-$,0FFh
+    org 0
+    incbin "resources/generated/intro2.bin" ; bank 32
+    defs 10000h-$,0FFh
+    org 0
+    incbin "resources/generated/intro3.bin" ; bank 40
+    defs 10000h-$,0FFh
+    org 0
+    incbin "resources/generated/route0.bin" ; ASCII8 banks 48..51
+    defs 2000h-$,0FFh
+    org 0
+    incbin "resources/generated/route1.bin"
+    defs 2000h-$,0FFh
+    org 0
+    incbin "resources/generated/route2.bin"
+    defs 2000h-$,0FFh
+    org 0
+    incbin "resources/generated/route3.bin"
+    defs 2000h-$,0FFh
+    org 0
+    defs 8000h,0FFh ; unused end of the seventh 64 KiB region
+    org 0
+    incbin "resources/generated/intro0.bin" ; bank 56, fishing introduction
+    defs 10000h-$,0FFh

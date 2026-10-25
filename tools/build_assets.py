@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import math
 import textwrap
+import re
 from collections import Counter
 from PIL import Image, ImageDraw
 ROOT=Path(__file__).resolve().parents[1]
@@ -23,6 +24,10 @@ for pal in PALETTES:
 def image(w,h,color=0): return Image.new('P',(w,h),color)
 patterns=bytearray(2048); colors=bytearray([0xf1]*2048)
 font=(ROOT/'resources/font-original.bin').read_bytes()
+question=re.search(r'QuestionMarkGlyph:\s*db\s+([^;\n]+)',(ROOT/'string.asm').read_text(),re.I)
+question_rows=bytes(int(value.strip().replace('$','0x'),0) for value in question.group(1).split(','))
+assert len(question_rows)==8
+patterns[63*8:64*8]=question_rows
 chars=[32,127,45]+list(range(48,58))+list(range(65,91))
 for i,ch in enumerate(chars): patterns[ch*8:ch*8+8]=font[i*8:i*8+8]
 # Extended Latin-1 glyph for the name VAVÁ; original ASCII remains untouched.
@@ -62,6 +67,7 @@ extras={40:[0x0e,0x18,0x30,0x30,0x30,0x18,0x0e,0],
 240:[0,0x3e,0x63,0x60,0x63,0x3e,0x0c,0x18],
 241:[0x0c,0x18,0x3e,0x63,0x7f,0x60,0x3e,0],
 242:[0x0c,0x18,0x3e,0x63,0x63,0x63,0x3e,0],
+243:[0x18,0x24,0x3e,0x63,0x7f,0x60,0x3e,0],
 244:[0x3e,0x63,0x60,0x60,0x63,0x3e,0x0c,0x18]}
 for ch,rows in extras.items(): patterns[ch*8:ch*8+8]=bytes(rows)
 CREDIT_PARAGRAPHS=[
@@ -119,6 +125,7 @@ tile(155,3,8,[0x7f,0x7d,0x7d,0x7c,0x7c,0x7c,0x7c,0xff])
 tile(156,3,15,[0x80,0xc0,0x60,0x30,0x10,0x10,0x70,0x60])
 tile(157,14,15,[0,0,0,0,0,0,0,0xff]) # forecourt / driveway
 tile(158,3,15,[0x18,0x18,0x18,0x18,0x18,0x18,0x18,0x18])
+tile(159,7,1,[0xff,0,0,0,0xff,0,0,0]) # wooden fishing deck
 # River Raid style gauge: an outlined track with a sliding needle, E to F.
 tile(168,1,14,[0,0xff,0,0,0,0,0xff,0])
 for x in range(8):
@@ -154,7 +161,7 @@ def make_route(stage):
     world=[]
     centers=[]
     for y in range(WORLD_ROWS):
-        shift=0 if stage==1 else round(4*math.sin(y*math.pi/40))
+        shift=round((3 if stage<2 else 4)*math.sin(y*math.pi/40))
         left,right=10+shift,21+shift
         for lo,hi in (() if stage!=2 else ((28,47),(78,97))):
             if lo<=y<=hi:
@@ -162,8 +169,9 @@ def make_route(stage):
                 left,right=8+shift+inset,23+shift-inset
         if stage==2 and 123<=y<=132: left,right=11+shift,20+shift
         if stage==3: left,right=12+shift,19+shift
+        if stage<2: left,right=11+shift,20+shift
         centers.append(((left+right)//2)*8)
-        river=stage!=1 and (33<=y<=40 or 83<=y<=90)
+        river=33<=y<=40 or 83<=y<=90
         row=[]
         for x in range(32):
             t=128 if (x*7+y*3)%5 else 129
@@ -180,7 +188,7 @@ def make_route(stage):
         world.append(row)
     def label(y,x,text): world[y][x:x+len(text)]=map(ord,text)
     def house(y,x,name):
-        label(y-1,x,name)
+        if name: label(y-1,x,name)
         world[y][x:x+6]=[148,149,149,149,149,150]
         world[y+1][x:x+6]=[149]*6
         world[y+2][x:x+6]=[151,152,151,151,152,151]
@@ -188,29 +196,40 @@ def make_route(stage):
         world[y+4][x:x+6]=[151,151,153,153,151,151]
     # Vava's home is beside the initial car; the destination faces its driveway.
     for y in range(150,157): world[y][3:16]=[157]*13
-    house(148,1,'VAVÁ')
-    for y in range(7,19): world[y][13:19]=[157]*6
-    house(2,13,'DESTINO')
+    house(148,1,'VAVÁ' if stage>=2 else '')
+    if stage==2:
+        for y in range(7,19): world[y][13:19]=[157]*6
+        house(2,13,'BAR')
+    # The route now ends in an enemy encounter, without a destination house.
     for y in (54,110):
-        for yy in range(y-2,y+8): world[yy][min(centers[yy]//8+4,21):28]=[157]*(28-min(centers[yy]//8+4,21))
-        label(y-3,24,'POSTO')
-        world[y][25:27]=[154,156]
-        world[y+1][25:27]=[155,156]
-        world[y+2][25:27]=[158,128]
+        if stage<2:
+            for yy in range(y-2,y+8):
+                world[yy][24:32]=[145]*8
+                left=min(centers[yy]//8+3,20)
+                world[yy][left:25]=[159]*(25-left)
+            label(y-3,24,'PESCA')
+        else:
+            for yy in range(y-2,y+8): world[yy][min(centers[yy]//8+4,21):28]=[157]*(28-min(centers[yy]//8+4,21))
+            label(y-3,24,'POSTO')
+            world[y][25:27]=[154,156]
+            world[y+1][25:27]=[155,156]
+            world[y+2][25:27]=[158,128]
     (OUT/f'road_centers{suffix}.bin').write_bytes(bytes(centers))
     # Drivable limits for the complete 16px-wide car; include station forecourts.
     road_bounds=[]
     for y,row in enumerate(world):
-        columns=[x for x,t in enumerate(row) if t in (130,131,146,157)]
+        columns=[x for x,t in enumerate(row) if t in (130,131,146,157,159)]
         middle=min(columns,key=lambda x:abs(x-centers[y]//8))
         left=right=middle
-        while left>0 and row[left-1] in (130,131,146,157): left-=1
-        while right<31 and row[right+1] in (130,131,146,157): right+=1
+        while left>0 and row[left-1] in (130,131,146,157,159): left-=1
+        while right<31 and row[right+1] in (130,131,146,157,159): right+=1
         road_bounds.extend((left*8,right*8-8))
     (OUT/f'road_bounds{suffix}.bin').write_bytes(bytes(road_bounds))
     (OUT/f'world{suffix}.bin').write_bytes(bytes(t for row in world for t in row))
+    (OUT/f'route{stage}.bin').write_bytes(bytes(t for row in world for t in row)+bytes(centers)+bytes(road_bounds))
     return world,centers
 world,centers=make_route(2)
+make_route(0)
 make_route(1)
 make_route(3)
 # Art is authored as indexed pixels, then packed into real 16x16 masks.
@@ -246,6 +265,7 @@ metadata['car']=len(sprites)
 for by in (0,16):
     im=car.crop((0,by,16,by+16))
     for c in (1,10,5): add_mask(im,[{c}]*16,[c]*16)
+sprites.extend([(bytes(32),bytes(16))]*2) # slots 6/7 complete the walking trio
 metadata['cow']=len(sprites)
 for direction in (0,1):
     im=cow()
@@ -282,16 +302,44 @@ def add_person(im):
             assert len(cols)<=1,cols
             linecols.append(next(iter(cols),15))
         add_mask(part,[{c} for c in linecols],linecols)
+def add_reference_person(filename,size,palette_index,preview,canvas=(32,32),palette_override=None,fixed_pair=None,source_image=None):
+    # Preserve the reference's proportions inside a 32x32 hardware sprite group.
+    reference=(source_image.copy() if source_image is not None else Image.open(ROOT/'resources'/filename)).convert('RGBA')
+    reference=reference.resize(size,Image.NEAREST)
+    boss_source=Image.new('RGBA',canvas);boss_source.paste(reference,((canvas[0]-size[0])//2,0))
+    levels=(0,43,81,118,153,187,221,255)
+    boss_rgb=[tuple(levels[v] for v in rgb) for rgb in (palette_override or PALETTES[palette_index])]
+    boss=image(*canvas)
+    # Two masks per quadrant, with CC overlap: up to three colors on each row.
+    # Select the hardware color pair that best matches each half-row of the art.
+    for yy in range(0,canvas[1],16):
+        for xx in range(0,canvas[0],16):
+            first=[];second=[];first_colors=[];second_colors=[]
+            for y in range(16):
+                source=[boss_source.getpixel((xx+x,yy+y)) for x in range(16)]
+                opaque=[rgb[:3] for rgb in source if rgb[3]>=128]
+                def error(rgb,index): return sum((a-b)**2 for a,b in zip(rgb,boss_rgb[index]))
+                allowed={1,4,5,6,7,8,9,10,11,13,15} # keep skin/hair/cloth hues; never green
+                if palette_override: allowed.add(14)
+                pairs=((a,b) for a in sorted(allowed) for b in sorted(allowed) if a<=b and (a|b) in allowed)
+                if fixed_pair: pairs=[fixed_pair]
+                c1,c2=min(pairs,key=lambda pair:sum((2 if min(rgb)>220 else 1)*min(error(rgb,c) for c in {pair[0],pair[1],pair[0]|pair[1]}) for rgb in opaque))
+                combined=c1|c2
+                for x,rgba in enumerate(source):
+                    if rgba[3]>=128:
+                        color=min({c1,c2,combined},key=lambda c:error(rgba[:3],c))
+                        boss.putpixel((xx+x,yy+y),color)
+                first.append({c1,combined});second.append({c2,combined})
+                first_colors.append(c1);second_colors.append(0x40|c2)
+            part=boss.crop((xx,yy,xx+16,yy+16))
+            add_mask(part,first,first_colors)
+            add_mask(part,second,second_colors)
+    boss_preview=Image.new('RGBA',canvas)
+    boss_preview.putdata([(*boss_rgb[color],255) if color else (0,0,0,0) for color in boss.getdata()])
+    boss_preview.save(ROOT/f'previews/{preview}.png')
+    boss_preview.resize((canvas[0]*8,canvas[1]*8),Image.NEAREST).save(ROOT/f'previews/{preview}-8x.png')
 metadata['boss']=len(sprites)
-im=image(16,32);d=ImageDraw.Draw(im)
-d.rectangle((4,0,12,2),fill=1);d.rectangle((5,0,11,1),fill=3)
-d.rectangle((4,3,12,11),fill=1);d.rectangle((5,3,11,10),fill=9)
-d.point((7,6),fill=1);d.point((10,6),fill=1)
-d.rectangle((3,12,13,23),fill=1);d.rectangle((4,12,12,22),fill=8)
-d.rectangle((1,14,3,20),fill=1);d.rectangle((13,13,15,19),fill=1)
-d.rectangle((4,24,12,29),fill=1);d.rectangle((5,24,7,29),fill=5);d.rectangle((10,24,11,29),fill=5)
-d.rectangle((3,30,7,31),fill=1);d.rectangle((10,30,14,31),fill=1)
-add_person(im)
+add_reference_person('garapa-reference.png',(20,32),2,'garapa-sprite')
 metadata['cane']=len(sprites)
 for frame in range(2):
     im=image(16,16);d=ImageDraw.Draw(im)
@@ -302,26 +350,72 @@ for frame in range(2):
         d.line((3,1,12,14),fill=11,width=3)
         d.line((4,5,7,5),fill=0);d.line((8,10,11,10),fill=0)
     add_mask(im,[{11}]*16,[11]*16)
-for name,top,width,shirt in [('runner_small',18,7,3),('runner_tall',8,7,10),('runner_fat',14,13,4)]:
+# The supplied side-view strip replaces the old generic front-facing runners.
+runner_strip=Image.open(ROOT/'resources/runners-reference.png').convert('RGBA')
+assert runner_strip.size==(48,32)
+# Remove only the connected white backdrop; preserve whites inside the figures.
+stack=[(x,y) for x in range(48) for y in (0,31)]+[(x,y) for x in (0,47) for y in range(32)]
+seen=set()
+while stack:
+    x,y=stack.pop()
+    if not(0<=x<48 and 0<=y<32) or (x,y) in seen: continue
+    seen.add((x,y));r,g,b,alpha=runner_strip.getpixel((x,y))
+    if min(r,g,b)<245: continue
+    runner_strip.putpixel((x,y),(r,g,b,0))
+    stack.extend(((x-1,y),(x+1,y),(x,y-1),(x,y+1)))
+# Trim neutral antialiasing outside each figure, so the white matte does not
+# turn into a bright outline against the road. Interior shirt/shoe whites stay.
+for cell in range(3):
+    for y in range(32):
+        strong=[]
+        for x in range(16):
+            r,g,b,alpha=runner_strip.getpixel((cell*16+x,y))
+            if alpha and (min(r,g,b)<120 or max(r,g,b)-min(r,g,b)>45): strong.append(x)
+        left,right=(min(strong),max(strong)) if strong else (16,-1)
+        for x in range(16):
+            r,g,b,alpha=runner_strip.getpixel((cell*16+x,y))
+            if (x<left or x>right) and min(r,g,b)>120 and max(r,g,b)-min(r,g,b)<30:
+                runner_strip.putpixel((cell*16+x,y),(r,g,b,0))
+for index,name in enumerate(('runner_small','runner_tall','runner_fat')):
     metadata[name]=len(sprites)
+    source=runner_strip.crop((index*16,0,index*16+16,32))
     for frame in range(2):
-        im=image(16,32);d=ImageDraw.Draw(im)
-        d.rectangle((5,top,10,top+4),fill=1);d.rectangle((6,top+1,9,top+4),fill=9)
-        d.point((9,top+2),fill=1)
-        left=(16-width)//2;right=left+width-1
-        d.rectangle((left,top+5,right,27),fill=1)
-        d.rectangle((left+1,top+5,right-1,26),fill=shirt)
+        pose=source.copy()
         if frame:
-            d.line((5,28,3,31),fill=1,width=2);d.line((10,28,13,30),fill=1,width=2)
-        else:
-            d.line((5,28,7,31),fill=1,width=2);d.line((10,28,9,31),fill=1,width=2)
-        add_person(im)
+            for y in range(27,32):
+                for x in range(16): pose.putpixel((x,y),(0,0,0,0))
+            for y in range(27,32):
+                for x in range(16):
+                    pixel=source.getpixel((x,y));dx=-1 if x<8 else 1
+                    if pixel[3] and 0<=x+dx<16: pose.putpixel((x+dx,y),pixel)
+        add_reference_person('runners-reference.png',(16,32),2,f'{name}-{frame}',canvas=(16,32),source_image=pose)
 assert len(sprites)<=64
 (OUT/'sprites.bin').write_bytes(b''.join(s[0] for s in sprites))
 (OUT/'sprite_colors.bin').write_bytes(b''.join(s[1] for s in sprites))
 for i,pal in enumerate(PALETTES):
     (OUT/f'palette{i}.bin').write_bytes(bytes(v for r,g,b in pal for v in ((r<<4)|b,g)))
-metadata.update(world_rows=WORLD_ROWS, start_row=138, stations=[54,110], rivers=[[33,40],[83,90]], road_centers=centers, sprite_count=len(sprites),palettes=PALETTES,font_chars=chars,extra_font_chars=[193]+list(range(97,123))+list(extras))
+metadata.update(world_rows=WORLD_ROWS, start_row=138, stations=[54,110], rivers=[[33,40],[83,90]], road_centers=centers, sprite_count=len(sprites),palettes=PALETTES,font_chars=chars,extra_font_chars=[63,193]+list(range(97,123))+list(extras))
 (OUT/'manifest.json').write_text(json.dumps(metadata,indent=2)+'\n')
 (OUT/'assets.inc').write_text('\n'.join(f'{k.upper()}_PATTERN equ {v*4}' for k,v in metadata.items() if k in ('car','cow','dust','cheese','boss','cane','runner_small','runner_tall','runner_fat'))+'\nSPRITE_BYTES equ '+str(len(sprites)*32)+'\n')
 print(f'Assets: {len(sprites)} sprite patterns, 160x32 route, original 39-glyph font')
+
+# Alternate boss graphics share the garapa VRAM slots during the second fight.
+base=len(sprites)
+cheese_fight_palette=list(PALETTES[1])
+cheese_fight_palette[9]=(7,4,2)
+cheese_fight_palette[14]=(7,4,2)
+(OUT/'cheese_fight_palette.bin').write_bytes(bytes(v for r,g,b in cheese_fight_palette for v in ((r<<4)|b,g)))
+add_reference_person('cheese-man-reference.png',(32,32),1,'cheese-man-sprite',palette_override=cheese_fight_palette)
+(OUT/'cheese_boss_patterns.bin').write_bytes(b''.join(p for p,c in sprites[base:]))
+(OUT/'cheese_boss_colors.bin').write_bytes(b''.join(c for p,c in sprites[base:]))
+del sprites[base:]
+add_reference_person('enemy-cheese-reference.png',(16,16),1,'enemy-cheese-sprite',canvas=(16,16),palette_override=cheese_fight_palette,fixed_pair=(10,13))
+(OUT/'enemy_cheese_patterns.bin').write_bytes(b''.join(p for p,c in sprites[base:]))
+(OUT/'enemy_cheese_colors.bin').write_bytes(b''.join(c for p,c in sprites[base:]))
+del sprites[base:]
+
+base=len(sprites)
+add_reference_person('trio-reference.png',(32,32),0,'trio-sprite')
+(OUT/'trio_patterns.bin').write_bytes(b''.join(p for p,c in sprites[base:]))
+(OUT/'trio_colors.bin').write_bytes(b''.join(c for p,c in sprites[base:]))
+del sprites[base:]

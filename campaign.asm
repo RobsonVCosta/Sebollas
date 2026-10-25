@@ -35,6 +35,7 @@ ApplyStagePalette:
     jr nz,.upload
     ld hl,StagePalette2
 .upload:
+UploadPalette:
     push hl
     xor a
     ld c,16
@@ -66,6 +67,7 @@ AdvanceStage:
     ld a,(_stage)
     inc a
     ld (_stage),a
+ShowStageCard:
     ld a,3
     ld (_state),a
     ld hl,100
@@ -76,21 +78,26 @@ AdvanceStage:
     ld bc,768
     ld a,32
     call FILVRM
+    ld a,(_stage)
+    or a
+    jr nz,.notFishing
+    ld de,FishingTitle
+    ld bc,090Ah
+    jp PutText
+.notFishing:
+    cp 3
+    jr nz,.numbered
+    ld de,FinalStageText
+    ld bc,090Bh
+    jp PutText
+.numbered:
     ld de,StageLabel
     ld bc,090Ch
     call PutText
     ld a,(_stage)
     add a,'0'
     ld hl,NAMTBL+9*32+17
-    call WRTVRM
-    ld de,MoreCowsText
-    ld a,(_stage)
-    cp 3
-    jr nz,.caption
-    ld de,GarapaText
-.caption:
-    ld bc,0C06h
-    jp PutText
+    jp WRTVRM
 
 CampaignTick:
     ld a,(_state)
@@ -102,6 +109,12 @@ CampaignTick:
     jp z,EndingTick
     cp 7
     jp z,CheeseBonusTick
+    cp 11
+    jp z,MeetingTick
+    cp 12
+    jp z,CaneChallengeTick
+    cp 10
+    jp z,StageIntroTick
     cp 8
     jp nc,EndingArtTick
     cp 6
@@ -114,7 +127,7 @@ CampaignTick:
     ld a,h
     or l
     ret nz
-    jp BeginStage
+    jp BeginStageIntro
 
 DrawStageHUD:
     ld hl,NAMTBL+17
@@ -122,18 +135,14 @@ DrawStageHUD:
     ld a,32
     call FILVRM
     ld a,(_state)
+    cp 12
+    jp z,DrawCaneTimer
     cp 4
     jr z,.boss
     ld a,(_refueling)
     or a
     jr nz,.station
-    ld de,StageLabel
-    ld bc,0011h
-    call PutText
-    ld a,(_stage)
-    add a,'0'
-    ld hl,NAMTBL+22
-    jp WRTVRM
+    ret
 .station:
     ld de,StationHUD
     ld bc,0011h
@@ -195,7 +204,7 @@ BeginBoss:
     ld (_carX),a
     ld a,136
     ld (_carY),a
-    ld a,3
+    ld a,5
     ld (_lives),a
     ld a,24
     ld (_throwClock),a
@@ -216,8 +225,18 @@ BeginBoss:
     ld (_effectTime+1),a
     ld (_effectTime+2),a
     call InitSound
+    xor a
+    ld (_musicStep),a
+    ld (_musicClock),a
+    call LoadBossArt
     call ClearArena
+    call DrawArenaStation
     ld de,GarapaText
+    ld a,(_stage)
+    cp 3
+    jr nz,.name
+    ld de,CheeseManText
+.name:
     ld bc,0308h
     call PutText
     call DrawHUD
@@ -229,6 +248,10 @@ BossTick:
     or a
     jp nz,BossDefeatTick
     call MovePlayer
+    call UpdateBossFuel
+    ld a,(_state)
+    cp 4
+    ret nz
     call UpdateHornInput
     ld a,(_hornPhase)
     cp 1
@@ -253,7 +276,15 @@ BossTick:
     or a
     ld a,(_bossX)
     jr nz,.left
-    add a,2
+    ld b,2
+    ld c,a
+    ld a,(_stage)
+    cp 3
+    jr nz,.rightSpeed
+    inc b
+.rightSpeed:
+    ld a,c
+    add a,b
     cp 152
     jr c,.save
     ld a,1
@@ -261,7 +292,15 @@ BossTick:
     ld a,152
     jr .save
 .left:
-    sub 2
+    ld b,2
+    ld c,a
+    ld a,(_stage)
+    cp 3
+    jr nz,.leftSpeed
+    inc b
+.leftSpeed:
+    ld a,c
+    sub b
     cp 89
     jr nc,.save
     xor a
@@ -351,8 +390,14 @@ UpdateCane:
     ld (_caneTarget),a
     ret
 .fly:
+    ld a,(_stage)
+    cp 3
+    ld b,2
+    jr nz,.speed
+    inc b
+.speed:
     ld a,(_caneY)
-    add a,2
+    add a,b
     cp 184
     jr nc,.remove
     ld (_caneY),a
@@ -421,11 +466,13 @@ BuildBossSprites:
     ld a,(_bossFlash)
     and 2
     jr nz,.cane
-    ld d,40
     ld a,(_bossX)
-    ld e,a
+    ld (_bossSprite+1),a
+    ld a,40
+    ld (_bossSprite+2),a
+    ld ix,_bossSprite
     ld a,BOSS_PATTERN/4
-    call DrawPerson
+    call DrawLargeSprite
 .cane:
     ld a,(_caneActive)
     or a
@@ -434,11 +481,24 @@ BuildBossSprites:
     ld e,a
     ld a,(_caneY)
     ld d,a
+    ld a,(_stage)
+    cp 3
+    jr nz,.caneFrame
+    ld a,CANE_PATTERN/4
+    call AppendSprite
+    inc a
+    jp AppendSprite
+.caneFrame:
     ld a,(_tick)
     rrca
     rrca
     and 1
     add a,CANE_PATTERN/4
+    ld b,a
+    ld a,(_state)
+    cp 12
+    ld a,b
+    jp z,AppendWalkingCane
     jp AppendSprite
 
 BeginEnding:
@@ -471,6 +531,7 @@ BeginEnding:
     ld (_runnerTallX),a
     ld (_runnerFatX),a
     call InitSound
+    call ApplyStagePalette ; restore road/runner colors after the cheese boss
     call ClearArena
     ld de,VictoryText
     ld bc,0307h
@@ -498,7 +559,7 @@ EndingTick:
     ld a,l
     cp 20
     jr nz,.tall
-    ld a,112
+    ld a,96
     ld (_runnerSmallX),a
 .tall:
     ld a,l
@@ -510,7 +571,7 @@ EndingTick:
     ld a,l
     cp 70
     jp nz,.draw
-    ld a,112
+    ld a,144
     ld (_runnerFatX),a
     ld a,3
     ld (_endingPhase),a
@@ -601,19 +662,7 @@ AdvanceRunner:
     inc a
     cp 240
     jr nc,.board
-    ld b,a
-    ld a,(_busColumn)
-    cp 30
-    jr nc,.save
-    add a,a
-    add a,a
-    add a,a
-    sub 4
-    cp b
-    jr z,.board
-    jr c,.board
-.save:
-    ld (hl),b
+    ld (hl),a
     ret
 .board:
     ld (hl),254
@@ -791,14 +840,93 @@ RevealCreditLetter:
     ret
 
 StageLabel: db "FASE ",0
+FinalStageText: db "FASE FINAL",0
 MoreCowsText: db "MAIS VACAS NA ESTRADA",0
 GarapaText: db "GAROTO DA GARAPA",0
+CheeseManText: db "HOMEM DO QUEIJO",0
 BossHPLabel: db "HP ",0
 StationHUD: db "POSTO",0
-VictoryText: db "VENCEMOS A GARAPA!",0
+VictoryText: db "VENCEMOS O QUEIJO!",0
 BusDestination: db "ONIBUS PARA NOVA IGUA",244,"U",0
 CaughtBusText: db "PEGAMOS O ONIBUS!",0
 BusTileMap: db "N.IGUA",244,"U",208,209,210,211,212,213,214,215
     db 216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231
 CreditSequence: db 1,12,"CREDITOS",0
     include "resources/generated/credits.inc"
+
+; Swap only the shared boss/projectile patterns; road sprites stay intact.
+LoadBossArt:
+    ld hl,SpritePatterns+BOSS_PATTERN*8
+    ld a,(_stage)
+    cp 3
+    jr nz,.copy
+    ld hl,CheeseBossPatterns
+.copy:
+    ld de,SPTPAT+BOSS_PATTERN*8
+    ld bc,320
+    call LDIRVM
+    ld a,(_stage)
+    cp 3
+    ret nz
+    ld hl,CheeseFightPalette
+    jp UploadPalette
+
+DrawArenaStation:
+    ld a,(_stage)
+    cp 2
+    jr nc,.floorStart
+    ld hl,NAMTBL+10*32+24
+    ld b,4
+.pond:
+    push bc
+    push hl
+    ld bc,8
+    ld a,145
+    call FILVRM
+    pop hl
+    ld de,32
+    add hl,de
+    pop bc
+    djnz .pond
+.floorStart:
+    ld hl,NAMTBL+14*32+24
+    ld b,10
+.floor:
+    push bc
+    push hl
+    ld bc,8
+    ld a,(_stage)
+    cp 2
+    ld a,157
+    jr nc,.floorTile
+    ld a,159
+.floorTile:
+    call FILVRM
+    pop hl
+    ld de,32
+    add hl,de
+    pop bc
+    djnz .floor
+    ld de,StationHUD
+    ld a,(_stage)
+    cp 2
+    jr nc,.stationSign
+    ld de,FishingSign
+.stationSign:
+    ld bc,0D1Ah
+    call PutText
+    ld a,(_stage)
+    cp 2
+    ret c
+    ld hl,NAMTBL+14*32+28
+    ld a,154
+    call WRTVRM
+    ld hl,NAMTBL+14*32+29
+    ld a,156
+    call WRTVRM
+    ld hl,NAMTBL+15*32+28
+    ld a,155
+    call WRTVRM
+    ld hl,NAMTBL+15*32+29
+    ld a,156
+    jp WRTVRM

@@ -1,13 +1,13 @@
 {
   "car": 0,
-  "cow": 6,
-  "dust": 22,
-  "cheese": 26,
-  "boss": 28,
-  "cane": 32,
-  "runner_small": 34,
-  "runner_tall": 42,
-  "runner_fat": 50,
+  "cow": 8,
+  "dust": 24,
+  "cheese": 28,
+  "boss": 30,
+  "cane": 38,
+  "runner_small": 40,
+  "runner_tall": 48,
+  "runner_fat": 56,
   "world_rows": 160,
   "start_row": 138,
   "stations": [
@@ -186,7 +186,7 @@
     112,
     120
   ],
-  "sprite_count": 58,
+  "sprite_count": 64,
   "palettes": [
     [
       [
@@ -477,6 +477,7 @@
     90
   ],
   "extra_font_chars": [
+    63,
     193,
     97,
     98,
@@ -511,6 +512,7 @@
     240,
     241,
     242,
+    243,
     244
   ]
 }

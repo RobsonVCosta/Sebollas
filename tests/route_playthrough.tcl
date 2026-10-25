@@ -8,7 +8,7 @@ foreach line [split [read $f] \n] {
     if {[regexp {^([^:]+): EQU (0x[0-9A-Fa-f]+)} $line -> name addr]} {set sym($name) [expr {$addr}]}
 }
 close $f
-set f [open resources/generated/road_centers.bin rb]
+set f [open resources/generated/road_centers0.bin rb]
 fconfigure $f -translation binary
 binary scan [read $f] cu* centers
 close $f
@@ -19,7 +19,7 @@ set minimum_fuel 100
 set finished false
 proc drive_route {} {
     set state [debug read memory 0xC000]
-    if {$state==3 && [debug read memory 0xC060]==2} {
+    if {$state==11 && [debug read memory 0xC060]==0} {
         set ::finished true
         report_route
         return
@@ -38,7 +38,7 @@ proc drive_route {} {
     if {![debug read memory 0xC061]} {keymatrixdown 8 128; return}
     set row [debug read memory 0xC017]
     set axle_row [expr {$row+17}]
-    set target [lindex $::centers $axle_row]
+    set target [expr {[lindex $::centers $axle_row]-8}]
     if {($axle_row<=117 && $axle_row>=108) || ($axle_row<=61 && $axle_row>=52)} {set target 168}
     set x [debug read memory 0xC004]
     keymatrixup 8 255
@@ -56,11 +56,11 @@ after time 6.1 {keymatrixup 8 1; debug set_bp $::sym(MainLoop.tick) {} {drive_ro
 proc report_route {} {
     set state [debug read memory 0xC000]
     set hz [expr {[debug read memory 0xC003] ? 60 : 50}]
-    set passed [expr {$::finished && $state==3 && $::stops==2 && $::minimum_fuel>0 && $::minimum_fuel<70}]
+    set passed [expr {$::finished && $state==11 && $::stops==2 && $::minimum_fuel>0 && $::minimum_fuel<90}]
     set f [open "resources/generated/route-$hz.txt" w]
-    puts $f "[expr {$passed ? {PASS} : {FAIL}}] phase 1: state=$state; refuel stops=$::stops; minimum fuel=$::minimum_fuel"
+    puts $f "[expr {$passed ? {PASS} : {FAIL}}] fishing route: state=$state; refuel stops=$::stops; minimum fuel=$::minimum_fuel"
     close $f
     exit
 }
-after time 45 {report_route}
+after time 60 {report_route}
 set power true

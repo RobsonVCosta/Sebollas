@@ -9,12 +9,12 @@ foreach line [split [read $f] \n] {
 }
 close $f
 proc scene {row x y fuel filling {arrived 0}} {
-    foreach {addr val} [list 0xC000 1 0xC004 $x 0xC005 $y 0xC006 3 0xC007 0 0xC017 $row 0xC020 0 0xC028 0 0xC04E $fuel 0xC050 $filling 0xC053 0 0xC058 0 0xC060 1 0xC061 1] {
+    foreach {addr val} [list 0xC000 1 0xC004 $x 0xC005 $y 0xC006 5 0xC007 0 0xC017 $row 0xC020 0 0xC028 0 0xC04E $fuel 0xC050 $filling 0xC053 0 0xC058 0 0xC060 2 0xC061 1] {
         debug write memory $addr $val
     }
     # A RAM trampoline calls ROM routines, then HALTs with BIOS IRQs enabled.
     set cursor 0xCFC0
-    set routines {SetupGameVideo DrawWorld DrawHUD BuildSprites UploadSprites}
+    set routines {SetupGameVideo LoadStageMap ApplyStagePalette DrawWorld DrawHUD BuildSprites UploadSprites}
     if {$arrived} {
         debug write memory 0xC000 1
         lappend routines CompleteStage

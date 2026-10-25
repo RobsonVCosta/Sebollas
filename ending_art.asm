@@ -83,3 +83,32 @@ ShowEndingArt:
     or c
     jr nz,.copy
     ret
+
+; Stage illustrations use the same native 256-color loader as the ending.
+BeginStageIntro:
+    ld a,10
+    ld (_state),a
+    ld a,(_stage)
+    or a
+    jr nz,.standard
+    ld a,56
+    jr .load
+.standard:
+    dec a
+    add a,a
+    add a,a
+    add a,a
+    add a,24
+.load:
+    call ShowEndingArt
+    ld hl,250
+    ld (_stageTimer),hl
+    ret
+StageIntroTick:
+    ld hl,(_stageTimer)
+    dec hl
+    ld (_stageTimer),hl
+    ld a,h
+    or l
+    ret nz
+    jp BeginStage

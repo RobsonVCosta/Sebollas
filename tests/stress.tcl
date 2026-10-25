@@ -14,7 +14,7 @@ proc sample_frame {} {
     if {[debug read memory 0xC000]!=1} {return}
     incr ::samples
     # Keep the run alive while exercising real collision and invulnerability code.
-    debug write memory 0xC006 3
+    debug write memory 0xC006 5
     debug write memory 0xC04E 100
     set counts [lrepeat 192 0]
     for {set s 0} {$s<32} {incr s} {

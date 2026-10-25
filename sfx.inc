@@ -74,6 +74,9 @@ SoundStart:
     ld bc,0010h
     jp PlayEffect
 SoundHorn:
+    ld a,(_stage)
+    cp 2
+    ret c
     ; Do not restart an in-progress "bi, biiii" when space is held down.
     ld a,(_hornPhase)
     or a
@@ -85,22 +88,34 @@ SoundHorn:
     ld c,6
     jp HornTones
 HornTones:
-    ; Short/long lengths share the two beating tones of the same horn.
+    ; Reference recording: ~338 Hz body and a quieter metallic band near 3 kHz.
     push bc
     ld b,0
-    ld hl,180
+    ld hl,335
     call PlayEffect
     pop bc
+    ld a,(_refueling)
+    or a
+    jr nz,.envelope
     ld b,1
-    ld hl,142
-    jp PlayEffect
+    ld hl,36
+    call PlayEffect
+.envelope:
+    xor a
+    ld (_hornAge),a
+    jp ShapeHorn
 UpdateHorn:
     ld a,(_hornPhase)
     or a
     ret z
     ld hl,_hornClock
     dec (hl)
-    ret nz
+    jr z,.transition
+    ld a,(_hornPhase)
+    cp 2
+    ret z
+    jp ShapeHorn
+.transition:
     ld a,(_hornPhase)
     cp 1
     jr z,.gap
@@ -118,10 +133,78 @@ UpdateHorn:
 .long:
     ld a,3
     ld (_hornPhase),a
-    ld a,24
+    ld a,32
     ld (_hornClock),a
-    ld c,24
+    ld c,32
     jp HornTones
+
+; Subtle pitch movement and a soft attack/release avoid a flat electronic beep.
+; A/B are the horn; C remains available for music and priority alerts.
+ShapeHorn:
+    ld a,(_hornClock)
+    ld (_effectTime),a
+    ld a,(_hornAge)
+    and 15
+    add a,a
+    ld e,a
+    ld d,0
+    ld hl,HornPitchPeriods
+    add hl,de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    xor a
+    call Psg_write
+    ld e,d
+    ld a,1
+    call Psg_write
+    ld a,(_hornClock)
+    cp 4
+    jr nc,.attack
+    ld e,a
+    ld d,0
+    ld hl,HornReleaseVolumes
+    add hl,de
+    ld e,(hl)
+    jr .volume
+.attack:
+    ld a,(_hornAge)
+    ld e,10
+    or a
+    jr z,.volume
+    ld e,12
+    cp 1
+    jr z,.volume
+    ld e,13
+.volume:
+    ld a,8
+    call Psg_write
+    ld c,e
+    ld a,(_refueling)
+    or a
+    jr nz,.age ; channel B belongs to the refueling pulses while at a station
+    ld a,(_hornClock)
+    ld (_effectTime+1),a
+    ld a,2
+    ld e,36
+    call Psg_write
+    ld a,3
+    ld e,0
+    call Psg_write
+    ld a,c
+    sub 2 ; quieter high tone, matching the recording's metallic resonance
+    ld e,a
+    ld a,9
+    call Psg_write
+.age:
+    ld hl,_hornAge
+    inc (hl)
+    ret
+HornPitchPeriods:
+    dw 335,333,332,331,330,329,329,330,331,332,333,333,332,331,330,330
+HornReleaseVolumes:
+    db 0,7,9,11
+
 SoundRefuel:
     ; Rising, separated pulses while fuel enters the tank (River Raid style).
     ld a,(_fuel)
@@ -166,7 +249,12 @@ SoundCrash:
 UpdateFuelAlert:
     ld a,(_state)
     cp 1
+    jr z,.playing
+    cp 4
+    jr z,.playing
+    cp 12
     ret nz
+.playing:
     ld a,(_driveStarted)
     or a
     ret z

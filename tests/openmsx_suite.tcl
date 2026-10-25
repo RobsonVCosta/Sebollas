@@ -15,7 +15,13 @@ proc expect {name actual expected} {
 proc prepare {} {
     keymatrixup 8 255
     keymatrixup 7 255
-    foreach {a v} {0xC000 1 0xC004 120 0xC005 128 0xC006 3 0xC007 0 0xC015 0 0xC018 64 0xC017 138 0xC04E 100 0xC04F 0 0xC050 0 0xC052 0 0xC053 0 0xC054 0 0xC055 0 0xC056 0 0xC057 48 0xC058 0 0xC01C 0 0xC01D 0 0xC01E 0 0xC059 0 0xC05A 0 0xC05B 0 0xC05C 0 0xC05D 0 0xC05E 0 0xC060 1 0xC061 1 0xC062 1 0xC063 0 0xC064 0 0xC065 12 0xC066 120 0xC067 0 0xC068 24 0xC069 0 0xC06A 0 0xC06B 0 0xC06C 120 0xC06D 0 0xC077 0 0xC078 0 0xC079 0 0xC07A 0 0xC084 0 0xC085 0 0xC086 0 0xC087 0 0xC08F 0 0xC090 0} {wr $a $v}
+    set f [open resources/generated/route2.bin rb]
+    fconfigure $f -translation binary
+    debug write_block memory 0xD000 [read $f]
+    close $f
+    debug write memory 0x7000 2
+    debug write memory 0x7800 3
+    foreach {a v} {0xC000 1 0xC004 120 0xC005 128 0xC006 5 0xC007 0 0xC015 0 0xC018 64 0xC017 138 0xC04E 100 0xC04F 0 0xC050 0 0xC052 0 0xC053 0 0xC054 0 0xC055 0 0xC056 0 0xC057 48 0xC058 0 0xC01C 0 0xC01D 0 0xC01E 0 0xC059 0 0xC05A 0 0xC05B 0 0xC05C 0 0xC05D 0 0xC05E 0 0xC060 2 0xC061 1 0xC062 1 0xC063 0 0xC064 0 0xC065 12 0xC066 120 0xC067 0 0xC068 24 0xC069 0 0xC06A 0 0xC06B 0 0xC06C 120 0xC06D 0 0xC077 0 0xC078 0 0xC079 0 0xC07A 0 0xC084 0 0xC085 0 0xC086 0 0xC087 0 0xC08F 0 0xC090 0 0xC099 0} {wr $a $v}
     for {set a 0xC008} {$a<0xC00C} {incr a} {wr $a 0}
     for {set a 0xC020} {$a<0xC038} {incr a} {wr $a 0}
 }
@@ -38,8 +44,8 @@ proc check_sat {} {
 set cases {}
 proc case {name routine setup check} {lappend ::cases [list $name $routine $setup $check]}
 case reset ResetGame {} {
-    expect state [rd 0xC000] 1
-    expect lives [rd 0xC006] 3
+    expect state [rd 0xC000] 3
+    expect lives [rd 0xC006] 5
     expect carX [rd 0xC004] 120
     expect carY [rd 0xC005] 128
     expect score [bcd] 00000000
@@ -48,15 +54,15 @@ foreach {name mask dx dy} {up 32 0 -1 upright 160 2 -1 right 128 2 0 downright 1
     case $name MovePlayer [list keymatrixdown 8 $mask] "expect x \[rd 0xC004\] [expr {120+$dx}]; expect y \[rd 0xC005\] [expr {128+$dy}]"
 }
 case clamp_top_right MovePlayer {wr 0xC004 208; wr 0xC005 32; keymatrixdown 8 160} {
-    expect x [rd 0xC004] 160; expect y [rd 0xC005] 32
+    expect x [rd 0xC004] 128; expect y [rd 0xC005] 32
 }
 case clamp_bottom_left MovePlayer {wr 0xC004 32; wr 0xC005 144; keymatrixdown 8 80} {
-    expect x [rd 0xC004] 80; expect y [rd 0xC005] 144
+    expect x [rd 0xC004] 72; expect y [rd 0xC005] 144
 }
 case horn_scares ScareCowsAhead {cow 100 80} {
     expect scared [rd 0xC024] 1
     expect points [bcd] 00000100
-    expect lives [rd 0xC006] 3
+    expect lives [rd 0xC006] 5
 }
 case horn_scores_once ScareCowsAhead {cow 100 80 1; wr 0xC00A 1} {
     expect points [bcd] 00000100
@@ -70,10 +76,10 @@ case cow_leaves_left UpdateCows {cow 1 80 1; wr 0xC023 1} {
     expect active [rd 0xC020] 0; expect points [bcd] 00000000
 }
 case one_life_per_collision CheckHits {cow 112 128} {
-    expect lives [rd 0xC006] 2; expect invulnerability [rd 0xC007] 100
+    expect lives [rd 0xC006] 4; expect invulnerability [rd 0xC007] 100
 }
 case invulnerability CheckHits {cow 112 128; wr 0xC007 50} {
-    expect lives [rd 0xC006] 3; expect invulnerability [rd 0xC007] 50
+    expect lives [rd 0xC006] 5; expect invulnerability [rd 0xC007] 50
 }
 case third_hit_gameover CheckHits {
     cow 112 128; wr 0xC006 1
@@ -93,7 +99,7 @@ case held_start_not_repeated MenuTick {wr 0xC000 0; wr 0xC01A 0; keymatrixdown 8
 }
 case released_start_arms MenuTick {wr 0xC000 0; wr 0xC01A 0} {expect armed [rd 0xC01A] 1}
 case enter_starts MenuTick {wr 0xC000 0; wr 0xC01A 1; keymatrixdown 7 128} {
-    expect state [rd 0xC000] 1; expect lives [rd 0xC006] 3
+    expect state [rd 0xC000] 3; expect lives [rd 0xC006] 5
 }
 case space_honks UpdateHornInput {keymatrixdown 8 1; cow 112 80} {
     expect horn_phase [rd 0xC059] 1; expect leaving [rd 0xC024] 1
@@ -113,10 +119,10 @@ case bcd_wrap AddTen {foreach a {0xC008 0xC009 0xC00A} {wr $a 0x99}; wr 0xC00B 0
     expect score [bcd] 00000000
 }
 case spawn_right UpdateCows {wr 0xC018 1; wr 0xC019 0} {
-    expect active [rd 0xC020] 1; expect x [rd 0xC021] [expr {[debug read memory [expr {$::sym(RoadCenters)+140}]]-8}]; expect y [rd 0xC022] 16
+    expect active [rd 0xC020] 1; expect x [rd 0xC021] [expr {[debug read memory [expr {$::sym(RoadCenters1)+140}]]-8}]; expect y [rd 0xC022] 16
 }
 case spawn_left UpdateCows {wr 0xC018 1; wr 0xC019 1} {
-    expect active [rd 0xC020] 1; expect x [rd 0xC021] [expr {[debug read memory [expr {$::sym(RoadCenters)+140}]]-8}]; expect dir [rd 0xC023] 1
+    expect active [rd 0xC020] 1; expect x [rd 0xC021] [expr {[debug read memory [expr {$::sym(RoadCenters1)+140}]]-8}]; expect dir [rd 0xC023] 1
 }
 case spawn_spacing UpdateCows {cow 80 60; wr 0xC018 1} {expect second [rd 0xC028] 0}
 case spawn_second UpdateCows {cow 80 104; wr 0xC018 1} {
@@ -134,10 +140,10 @@ case fixed_hud UpdateScroll {
     expect maprow [rd 0xC017] 79
     expect hud [debug read_block VRAM 0x1800 64] $::oldhud
 }
-foreach lives {0 1 2 3} {
+foreach lives {0 1 2 3 4 5} {
     case hearts_$lives DrawHUD [list wr 0xC006 $lives] "
-        for {set i 0} {\$i<3} {incr i} {
-            expect heart_\$i \[debug read VRAM \[expr {0x181D+\$i}\]\] \[expr {\$i<$lives ? 140 : 141}\]
+        for {set i 0} {\$i<5} {incr i} {
+            expect heart_\$i \[debug read VRAM \[expr {0x181B+\$i}\]\] \[expr {\$i<$lives ? 140 : 141}\]
         }
     "
 }
@@ -148,10 +154,10 @@ case gameover_no_play_blink MenuTick {
 case cow_fixed_pose BuildSprites {cow 96 64; wr 0xC001 8} {
     expect cow_pattern [rd [expr {0xC100+7*4+2}]] $::sym(COW_PATTERN)
 }
-case fuel_consumption UpdateJourney {wr 0xC04F 5} {
+case fuel_consumption UpdateJourney {wr 0xC04F 11} {
     expect fuel [rd 0xC04E] 99; expect clock [rd 0xC04F] 0
 }
-case fuel_empty UpdateJourney {wr 0xC04E 1; wr 0xC04F 5} {expect state [rd 0xC000] 2}
+case fuel_empty UpdateJourney {wr 0xC04E 1; wr 0xC04F 11} {expect state [rd 0xC000] 2}
 foreach station {54 110} {
     case refuel_$station UpdateJourney "wr 0xC017 [expr {$station-17}]; wr 0xC004 168; wr 0xC04E 10" {
         expect fuel [rd 0xC04E] 11; expect filling [rd 0xC050] 1
@@ -168,15 +174,14 @@ case tank_caps_at_100 UpdateJourney {wr 0xC017 93; wr 0xC004 168; wr 0xC04E 100}
 }
 case filling_pauses_scroll UpdateScroll {wr 0xC050 1; wr 0xC016 7} {expect maprow [rd 0xC017] 138}
 case route_does_not_wrap UpdateScroll {wr 0xC017 0; wr 0xC016 7} {expect maprow [rd 0xC017] 0}
-case bridge_safe UpdateJourney {wr 0xC017 68} {expect lives [rd 0xC006] 3}
+case bridge_safe UpdateJourney {wr 0xC017 68} {expect lives [rd 0xC006] 5}
 case river_collision UpdateJourney {wr 0xC060 2; wr 0xC017 68; wr 0xC004 72} {
-    expect lives [rd 0xC006] 3; expect wall_x [rd 0xC004] 120
+    expect lives [rd 0xC006] 5; expect wall_x [rd 0xC004] 120
 }
-case narrow_road_wall UpdateJourney {wr 0xC060 2; wr 0xC017 110; wr 0xC004 32} {expect lives [rd 0xC006] 3; expect wall_x [rd 0xC004] 80}
+case narrow_road_wall UpdateJourney {wr 0xC060 2; wr 0xC017 110; wr 0xC004 32} {expect lives [rd 0xC006] 5; expect wall_x [rd 0xC004] 80}
 case arrival UpdateJourney {wr 0xC017 0; wr 0xC005 80} {
-    expect state [rd 0xC000] 7
-    expect current_stage [rd 0xC060] 1
-    expect card [debug read_block VRAM [expr {0x1800+3*32+8}] 5] "FASE "
+    expect state [rd 0xC000] 11
+    expect current_stage [rd 0xC060] 2
 }
 case destination_requires_driveway UpdateJourney {wr 0xC017 0} {expect state [rd 0xC000] 1}
 case arrival_to_title MenuTick {wr 0xC000 3; wr 0xC01A 1; keymatrixdown 8 1} {expect state [rd 0xC000] 0}
@@ -211,22 +216,22 @@ case fuel_alert_cooldown UpdateFuelAlert {wr 0xC04E 10; wr 0xC052 10} {
 case fuel_alert_stops_on_refill UpdateFuelAlert {wr 0xC04E 50; wr 0xC052 10} {expect interval [rd 0xC052] 0}
 case no_alert_while_filling UpdateFuelAlert {wr 0xC04E 10; wr 0xC050 1} {expect silent [rd 0xC01E] 0}
 case crash_precedes_fuel_alert UpdateFuelAlert {wr 0xC04E 10; wr 0xC01E 20} {expect crash [rd 0xC01E] 20}
-case gauge_empty DrawFuel {wr 0xC04E 0} {expect needle [debug read VRAM 0x1826] 177}
-case gauge_full DrawFuel {wr 0xC04E 100} {expect needle [debug read VRAM 0x182F] 176}
-case gauge_half DrawFuel {wr 0xC04E 50} {expect needle [debug read VRAM 0x182B] 169}
+case gauge_empty DrawFuel {wr 0xC04E 0} {expect needle [debug read VRAM 0x1827] 177}
+case gauge_full DrawFuel {wr 0xC04E 100} {expect needle [debug read VRAM 0x1830] 176}
+case gauge_half DrawFuel {wr 0xC04E 50} {expect needle [debug read VRAM 0x182C] 169}
 case cheese_spawn UpdateCheese {wr 0xC057 0} {
     expect active [rd 0xC053] 1; expect y [rd 0xC055] 32
-    expect center [rd 0xC054] [debug read memory [expr {$::sym(RoadCenters)+140}]]
+    expect center [rd 0xC054] [debug read memory [expr {$::sym(RoadCenters1)+140}]]
 }
 case cheese_collect UpdateCheese {wr 0xC053 1; wr 0xC054 120; wr 0xC055 120} {
     expect removed [rd 0xC053] 0; expect count [rd 0xC058] 1
-    expect pending_bonus_not_score [bcd] 00000000; expect lives [rd 0xC006] 3
+    expect pending_bonus_not_score [bcd] 00000000; expect lives [rd 0xC006] 5
 }
 case cheese_roll UpdateCheese {wr 0xC053 1; wr 0xC054 120; wr 0xC055 64; wr 0xC001 8} {
     expect y [rd 0xC055] 72; expect phase [rd 0xC056] 1
 }
 case cheese_exits UpdateCheese {wr 0xC053 1; wr 0xC054 40; wr 0xC055 176; wr 0xC001 8} {
-    expect active [rd 0xC053] 0; expect lives [rd 0xC006] 3
+    expect active [rd 0xC053] 0; expect lives [rd 0xC006] 5
 }
 case cheese_count_bcd UpdateCheese {wr 0xC053 1; wr 0xC054 120; wr 0xC055 120; wr 0xC058 9} {expect count [rd 0xC058] 16}
 case cheese_sprite BuildSprites {wr 0xC053 1; wr 0xC054 120; wr 0xC055 64} {
@@ -243,10 +248,10 @@ case horn_short_to_gap UpdateSound {
     expect silent_b [debug read {PSG regs} 9] 0
 }
 case horn_gap_to_long UpdateSound {wr 0xC059 2; wr 0xC05A 1} {
-    expect phase [rd 0xC059] 3; expect clock [rd 0xC05A] 24
-    expect long_a [rd 0xC01C] 24; expect long_b [rd 0xC01D] 24
-    expect volume_a [debug read {PSG regs} 8] 12
-    expect volume_b [debug read {PSG regs} 9] 12
+    expect phase [rd 0xC059] 3; expect clock [rd 0xC05A] 32
+    expect long_a [rd 0xC01C] 32; expect long_b [rd 0xC01D] 32
+    expect volume_a [debug read {PSG regs} 8] 10
+    expect volume_b [debug read {PSG regs} 9] 8
 }
 case horn_long_finishes UpdateSound {
     wr 0xC059 3; wr 0xC05A 1; wr 0xC01C 1; wr 0xC01D 1
@@ -279,14 +284,14 @@ case parked_cow_tracks_scenery UpdateScroll {cow 112 64; wr 0xC016 7} {
 case horn_spares_side_cow ScareCowsAhead {cow 208 80} {expect waiting [rd 0xC024] 0}
 case horn_silent_gap UpdateHornInput {cow 112 80; wr 0xC059 2; wr 0xC05A 2} {expect waiting [rd 0xC024] 0}
 case scared_cow_goes_left UpdateCows {cow 100 80 1; wr 0xC023 1} {expect x [rd 0xC021] 98}
-case spawn_matches_curve UpdateCows {wr 0xC017 70; wr 0xC018 1} {
+case spawn_matches_curve UpdateCows {wr 0xC060 2; wr 0xC017 70; wr 0xC018 1} {
     expect active [rd 0xC020] 1
     expect center [rd 0xC021] [expr {[debug read memory [expr {$::sym(RoadCenters)+72}]]-8}]
     expect waiting [rd 0xC024] 0
 }
 case music_starts UpdateMusic {} {
     expect period [expr {[debug read {PSG regs} 4]+256*[debug read {PSG regs} 5]}] 170
-    expect quiet_volume [debug read {PSG regs} 10] 5
+    expect music_volume [debug read {PSG regs} 10] 9
     expect next_note [rd 0xC05B] 1; expect duration [rd 0xC05C] 12
 }
 case music_advances UpdateMusic {wr 0xC05B 1; wr 0xC05C 1; wr 0xC05D 170} {
@@ -299,7 +304,7 @@ case music_loops_with_rest UpdateMusic {wr 0xC05B 31} {
 }
 case music_resumes_after_effect UpdateSound {wr 0xC01E 1; wr 0xC05C 8; wr 0xC05D 214} {
     expect period [expr {[debug read {PSG regs} 4]+256*[debug read {PSG regs} 5]}] 214
-    expect music_volume [debug read {PSG regs} 10] 5; expect timer [rd 0xC05C] 7
+    expect music_volume [debug read {PSG regs} 10] 9; expect timer [rd 0xC05C] 7
 }
 case music_preserves_foreground UpdateMusic {
     wr 0xC01E 10; wr 0xC05C 8; wr 0xC05D 214
@@ -330,9 +335,10 @@ after realtime 10 {
 }
 case horn_sequence_start SoundHorn {} {
     expect duration [rd 0xC01C] 6
-    expect volume [debug read {PSG regs} 8] 12
-    expect tone [debug read {PSG regs} 0] 180
-    expect second_tone [debug read {PSG regs} 2] 142
+    expect volume [debug read {PSG regs} 8] 10
+    expect tone [expr {[debug read {PSG regs} 0]+256*[debug read {PSG regs} 1]}] 335
+    expect metallic_tone [expr {[debug read {PSG regs} 2]+256*[debug read {PSG regs} 3]}] 36
+    expect softer_metallic_layer [debug read {PSG regs} 9] 8
     expect dual_duration [rd 0xC01D] 6
     expect horn_phase [rd 0xC059] 1
     expect short_clock [rd 0xC05A] 6
@@ -349,14 +355,20 @@ case play_space_does_not_drive CheckDriveStart {wr 0xC061 0; wr 0xC062 0; keymat
 case release_arms_drive CheckDriveStart {wr 0xC061 0; wr 0xC062 0} {expect ready [rd 0xC062] 1; expect stopped [rd 0xC061] 0}
 case arrows_start_drive CheckDriveStart {wr 0xC061 0; keymatrixdown 8 128} {expect moving [rd 0xC061] 1}
 case space_starts_drive CheckDriveStart {wr 0xC061 0; wr 0xC062 1; keymatrixdown 8 1} {expect moving [rd 0xC061] 1}
-case stage_two_follows_one AdvanceStage {} {expect stage [rd 0xC060] 2; expect card [rd 0xC000] 3}
+case stage_two_follows_one AdvanceStage {wr 0xC060 1} {expect stage [rd 0xC060] 2; expect card [rd 0xC000] 3}
 case stage_three_follows_two AdvanceStage {wr 0xC060 2} {expect stage [rd 0xC060] 3; expect card [rd 0xC000] 3}
-case stage_card_resumes CampaignTick {wr 0xC000 3; wr 0xC060 2; wr 0xC063 1; wr 0xC064 0; wr 0xC00A 1} {
-    expect road [rd 0xC000] 1; expect stage [rd 0xC060] 2
-    expect next_stage_drives [rd 0xC061] 1; expect fuel [rd 0xC04E] 100
+case stage_card_shows_intro CampaignTick {wr 0xC000 3; wr 0xC060 2; wr 0xC063 1; wr 0xC064 0; wr 0xC00A 1} {
+    expect illustration [rd 0xC000] 10; expect stage [rd 0xC060] 2
+    expect timer [rd 0xC063] 250
+    set f [open resources/generated/intro2.bin rb]; fconfigure $f -translation binary
+    expect pixels [debug read_block VRAM 0 54272] [read $f]; close $f
     expect score_kept [bcd] 00000100
 }
-case phase_one_cow_delay CowSpawnDelay {} {expect delay [reg A] 128}
+case intro_resumes_game StageIntroTick {wr 0xC000 10; wr 0xC060 2; wr 0xC063 1; wr 0xC064 0} {
+    expect road [rd 0xC000] 1; expect video [rd 0xFCAF] 4
+    expect automatic [rd 0xC061] 1; expect fuel [rd 0xC04E] 100
+}
+case car_route_cow_delay CowSpawnDelay {} {expect delay [reg A] 80}
 case phase_two_cow_delay CowSpawnDelay {wr 0xC060 2} {expect delay [reg A] 80}
 case phase_three_cow_delay CowSpawnDelay {wr 0xC060 3} {expect delay [reg A] 32}
 case phase_three_opens_boss CompleteStage {wr 0xC060 3} {expect fight [rd 0xC000] 4; expect health [rd 0xC065] 12}
@@ -367,13 +379,13 @@ case garapa_throws_cane UpdateCane {wr 0xC000 4; wr 0xC068 0; wr 0xC066 132} {
     expect active [rd 0xC069] 1; expect x [rd 0xC06A] 132; expect y [rd 0xC06B] 64
 }
 case cane_takes_one_heart UpdateCane {wr 0xC000 4; wr 0xC005 136; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 128} {
-    expect lives [rd 0xC006] 2; expect protection [rd 0xC007] 100; expect consumed [rd 0xC069] 0
+    expect lives [rd 0xC006] 4; expect protection [rd 0xC007] 100; expect consumed [rd 0xC069] 0
 }
-case cane_respects_protection UpdateCane {wr 0xC000 4; wr 0xC005 136; wr 0xC007 50; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 128} {expect lives [rd 0xC006] 3}
+case cane_respects_protection UpdateCane {wr 0xC000 4; wr 0xC005 136; wr 0xC007 50; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 128} {expect lives [rd 0xC006] 5}
 case car_parks_for_ending EndingTick {wr 0xC000 5; wr 0xC06E 0; wr 0xC005 135; wr 0xC072 255; wr 0xC073 255; wr 0xC074 255} {expect parked_y [rd 0xC005] 136}
-case small_boy_exits EndingTick {wr 0xC000 5; wr 0xC06E 1; wr 0xC06F 19; wr 0xC070 0; wr 0xC071 20; wr 0xC072 255; wr 0xC073 255; wr 0xC074 255} {expect small [rd 0xC072] 112; expect tall_waits [rd 0xC073] 255}
+case small_boy_exits EndingTick {wr 0xC000 5; wr 0xC06E 1; wr 0xC06F 19; wr 0xC070 0; wr 0xC071 20; wr 0xC072 255; wr 0xC073 255; wr 0xC074 255} {expect small [rd 0xC072] 96; expect tall_waits [rd 0xC073] 255}
 case tall_boy_exits EndingTick {wr 0xC000 5; wr 0xC06E 1; wr 0xC06F 44; wr 0xC070 0; wr 0xC071 20; wr 0xC072 254; wr 0xC073 255; wr 0xC074 255} {expect tall [rd 0xC073] 120}
-case big_boy_exits EndingTick {wr 0xC000 5; wr 0xC06E 1; wr 0xC06F 69; wr 0xC070 0; wr 0xC071 20; wr 0xC072 254; wr 0xC073 254; wr 0xC074 255} {expect big [rd 0xC074] 112}
+case big_boy_exits EndingTick {wr 0xC000 5; wr 0xC06E 1; wr 0xC06F 69; wr 0xC070 0; wr 0xC071 20; wr 0xC072 254; wr 0xC073 254; wr 0xC074 255} {expect big [rd 0xC074] 144}
 case bus_is_clipped DrawBusRoad {wr 0xC071 30} {
     expect destination [debug read VRAM [expr {0x1800+11*32+30}]] 78
     expect no_wrap [debug read VRAM [expr {0x1800+12*32}]] 157
@@ -443,7 +455,7 @@ case bonus_handles_score_carry CheeseBonusTick {wr 0xC000 7; wr 0xC058 1; wr 0xC
 case empty_bonus_finishes_once CheeseBonusTick {wr 0xC000 7; wr 0xC058 0} {
     expect done [rd 0xC085] 1; expect hold [rd 0xC063] 75; expect score [bcd] 00000000
 }
-case bonus_then_next_stage CheeseBonusTick {wr 0xC000 7; wr 0xC085 1; wr 0xC063 1; wr 0xC064 0} {
+case bonus_then_next_stage CheeseBonusTick {wr 0xC060 1; wr 0xC000 7; wr 0xC085 1; wr 0xC063 1; wr 0xC064 0} {
     expect stage [rd 0xC060] 2; expect card [rd 0xC000] 3
 }
 case final_bonus_then_bus CheeseBonusTick {wr 0xC000 7; wr 0xC060 3; wr 0xC085 1; wr 0xC063 1; wr 0xC064 0} {expect ending [rd 0xC000] 5}
@@ -468,9 +480,9 @@ case credit_new_line RevealCreditLetter {
     wr 0xC088 1; wr 0xC089 24; wr 0xC08A 0
     debug write_block VRAM 0x1885 [string repeat " " 24]
 } {expect first [debug read_block VRAM 0x1885 24] "E                       "}
-case boss_left_wall ClampCarToRoad {wr 0xC000 4; wr 0xC004 32} {expect x [rd 0xC004] 64; expect lives [rd 0xC006] 3}
-case boss_right_wall ClampCarToRoad {wr 0xC000 4; wr 0xC004 208} {expect x [rd 0xC004] 176; expect lives [rd 0xC006] 3}
-case no_start_prompt ResetGame {} {
+case boss_left_wall ClampCarToRoad {wr 0xC000 4; wr 0xC004 32} {expect x [rd 0xC004] 64; expect lives [rd 0xC006] 5}
+case boss_right_wall ClampCarToRoad {wr 0xC000 4; wr 0xC004 250} {expect x [rd 0xC004] 240; expect lives [rd 0xC006] 5}
+case no_start_prompt BeginStage {} {
     expect no_prompt [debug read_block VRAM [expr {0x1800+21*32+4}] 24] [debug read_block memory [expr {$::sym(WorldMap1)+(138+19)*32+4}] 24]
 }
 case stubborn_cow_ignores_horn ScareCowsAhead {cow 100 80; wr 0xC025 1} {
@@ -492,6 +504,140 @@ case bus_enters_from_left EndingTick {wr 0xC000 5; wr 0xC06E 4; wr 0xC071 255; w
 }
 case boys_chase_passing_bus EndingTick {wr 0xC000 5; wr 0xC06E 4; wr 0xC071 18; wr 0xC001 1; wr 0xC072 112; wr 0xC073 120; wr 0xC074 112} {
     expect running [rd 0xC06E] 5; expect boy [rd 0xC072] 113
+}
+case phase_three_fourth_cow_stubborn UpdateCows {wr 0xC060 3; wr 0xC018 1; wr 0xC08F 3} {expect stubborn [rd 0xC025] 1}
+case phase_three_three_cow_budget BuildSprites {
+    cow 96 16
+    foreach {a v} {0xC028 1 0xC029 96 0xC02A 64 0xC02B 0 0xC030 1 0xC031 96 0xC032 112 0xC033 0 0xC053 1 0xC054 120 0xC055 128} {wr $a $v}
+} {
+    expect slots [rd 0xC040] 32
+    set counts [lrepeat 192 0]
+    for {set slot 0} {$slot<32} {incr slot} {
+        set y [expr {[rd [expr {0xC100+$slot*4}]]+1}]
+        for {set line $y} {$line<$y+16 && $line<192} {incr line} {lset counts $line [expr {[lindex $counts $line]+1}]}
+    }
+    expect per_line [lindex [lsort -integer $counts] end] 8
+}
+case gameplay_has_no_stage_label DrawHUD {} {
+    expect no_stage [debug read_block VRAM [expr {0x1800+17}] 6] "      "
+}
+case battle_music_starts UpdateMusic {wr 0xC000 4} {
+    expect dramatic_tone [expr {[debug read {PSG regs} 4]+256*[debug read {PSG regs} 5]}] 428
+    expect quicker_notes [rd 0xC05C] 6
+}
+case bar_route_has_no_boss CompleteStage {wr 0xC060 2} {expect arrival [rd 0xC000] 11}
+case fishing_meets_peaceful_garapa CompleteStage {wr 0xC060 0} {expect meeting [rd 0xC000] 11; expect no_projectile [rd 0xC069] 0}
+case cheese_boss_uploads_shared_patterns LoadBossArt {wr 0xC060 3} {
+    set f [open resources/generated/cheese_boss_patterns.bin rb]; fconfigure $f -translation binary
+    expect boss_pixels [debug read_block VRAM [expr {0x3800+$::sym(BOSS_PATTERN)*8}] 256] [read $f]; close $f
+    set f [open resources/generated/enemy_cheese_patterns.bin rb]; fconfigure $f -translation binary
+    expect projectile_pixels [debug read_block VRAM [expr {0x3800+$::sym(CANE_PATTERN)*8}] 64] [read $f]; close $f
+}
+case garapa_restores_shared_patterns LoadBossArt {wr 0xC060 0} {
+    set f [open resources/generated/sprites.bin rb]; fconfigure $f -translation binary
+    seek $f [expr {$::sym(BOSS_PATTERN)*8}]
+    expect restored [debug read_block VRAM [expr {0x3800+$::sym(BOSS_PATTERN)*8}] 320] [read $f 320]; close $f
+}
+case cheese_projectile_moves_faster UpdateCane {wr 0xC000 4; wr 0xC060 3; wr 0xC069 1; wr 0xC06B 64} {
+    expect y [rd 0xC06B] 67
+}
+case cheese_fight_sprite_budget BuildBossSprites {wr 0xC000 4; wr 0xC060 3; wr 0xC005 80; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 64} {
+    expect slots [rd 0xC040] 17
+    set counts [lrepeat 192 0]
+    for {set slot 0} {$slot<17} {incr slot} {
+        set y [expr {[rd [expr {0xC100+$slot*4}]]+1}]
+        for {set line $y} {$line<$y+16 && $line<192} {incr line} {lset counts $line [expr {[lindex $counts $line]+1}]}
+    }
+    expect per_line [lindex [lsort -integer $counts] end] 6
+}
+case battle_music_keeps_playing_during_horn UpdateMusic {wr 0xC000 4; wr 0xC059 1} {
+    expect dramatic_tone [expr {[debug read {PSG regs} 4]+256*[debug read {PSG regs} 5]}] 428
+    expect audible [debug read {PSG regs} 10] 9
+}
+case horn_reaches_full_volume ShapeHorn {wr 0xC059 3; wr 0xC05A 20; wr 0xC099 3} {
+    expect main [debug read {PSG regs} 8] 13; expect metallic [debug read {PSG regs} 9] 11
+    expect pitch [expr {[debug read {PSG regs} 0]+256*[debug read {PSG regs} 1]}] 331
+}
+case horn_tail_softens ShapeHorn {wr 0xC059 3; wr 0xC05A 1; wr 0xC099 31} {
+    expect main [debug read {PSG regs} 8] 7; expect metallic [debug read {PSG regs} 9] 5
+}
+case horn_preserves_music_channel ShapeHorn {wr 0xC059 3; wr 0xC05A 20; wr 0xC099 6; debug write {PSG regs} 10 9; debug write {PSG regs} 4 170} {
+    expect music_volume [debug read {PSG regs} 10] 9; expect music_pitch [debug read {PSG regs} 4] 170
+}
+case horn_preserves_refuel_channel ShapeHorn {
+    wr 0xC050 1; wr 0xC059 3; wr 0xC05A 20; wr 0xC099 3; wr 0xC01D 3
+    debug write {PSG regs} 2 120; debug write {PSG regs} 9 12
+} {
+    expect refuel_pitch [debug read {PSG regs} 2] 120
+    expect refuel_volume [debug read {PSG regs} 9] 12
+    expect refuel_timer [rd 0xC01D] 3
+}
+case horn_keeps_release_timers_in_sync ShapeHorn {wr 0xC059 3; wr 0xC05A 20; wr 0xC099 4; wr 0xC01C 0; wr 0xC01D 0} {
+    expect timer_a [rd 0xC01C] 20; expect timer_b [rd 0xC01D] 20
+}
+case fuel_consumption_is_slower UpdateJourney {wr 0xC04F 5} {expect fuel [rd 0xC04E] 100; expect clock [rd 0xC04F] 6}
+case boss_station_refills UpdateBossFuel {wr 0xC000 4; wr 0xC004 216; wr 0xC005 136; wr 0xC04E 20} {
+    expect fuel [rd 0xC04E] 21; expect filling [rd 0xC050] 1
+}
+case boss_consumes_fuel UpdateBossFuel {wr 0xC000 4; wr 0xC04F 11; wr 0xC04E 20} {expect fuel [rd 0xC04E] 19}
+case boss_empty_tank UpdateBossFuel {wr 0xC000 4; wr 0xC04F 11; wr 0xC04E 1} {expect gameover [rd 0xC000] 2}
+case boss_station_keeps_combat_live BossTick {wr 0xC000 4; wr 0xC004 216; wr 0xC005 136; wr 0xC04E 20; wr 0xC001 0; wr 0xC066 120; wr 0xC067 0} {
+    expect fuel [rd 0xC04E] 21; expect boss_moves [rd 0xC066] 122; expect fighting [rd 0xC000] 4
+}
+case boss_station_graphics DrawArenaStation {} {
+    expect label [debug read_block VRAM [expr {0x1800+13*32+26}] 5] "POSTO"
+    expect pump [debug read VRAM [expr {0x1800+14*32+28}]] 154
+}
+case final_stage_card ShowStageCard {wr 0xC060 3} {expect title [debug read_block VRAM [expr {0x1800+9*32+11}] 10] "FASE FINAL"}
+case intro_waits_without_driving StageIntroTick {wr 0xC000 10; wr 0xC063 20; wr 0xC064 0; wr 0xC04E 42} {
+    expect still_image [rd 0xC000] 10; expect fuel [rd 0xC04E] 42; expect timer [rd 0xC063] 19
+}
+case five_hearts_fill_hud DrawHUD {} {expect hearts [debug read_block VRAM 0x181B 5] [string repeat [format %c 140] 5]}
+case fishing_has_no_horn SoundHorn {wr 0xC060 0} {expect quiet [rd 0xC059] 0}
+case walking_has_no_horn UpdateHornInput {wr 0xC060 1; keymatrixdown 8 1} {expect quiet [rd 0xC059] 0}
+case fishing_hud_is_hunger DrawFuel {wr 0xC060 0} {expect label [debug read_block VRAM 0x1821 4] "FOME"}
+case cane_counter_label DrawCheeseHUD {wr 0xC060 1} {expect label [debug read_block VRAM 0x1836 8] "CANAS   "}
+case walking_uploads_trio LoadWalkingArt {wr 0xC060 0} {
+    set f [open resources/generated/trio_patterns.bin rb]; fconfigure $f -translation binary
+    expect pixels [debug read_block VRAM 0x3800 256] [read $f]; close $f
+}
+case walking_player_sprite BuildSprites {wr 0xC060 0} {expect group [rd 0xC040] 8}
+case cow_crosses_walking_road UpdateWalkingCows {wr 0xC060 0; cow 70 70; wr 0xC004 200; wr 0xC001 0} {expect x [rd 0xC021] 71; expect no_chase [rd 0xC026] 0}
+case nearby_cow_starts_five_second_chase UpdateWalkingCows {wr 0xC060 0; cow 112 112; wr 0xC004 112; wr 0xC001 0} {
+    expect remaining [rd 0xC026] 249; expect triggered [rd 0xC027] 1
+}
+case cow_chase_expires UpdateWalkingCows {
+    wr 0xC060 0; cow 112 112; wr 0xC026 1; wr 0xC027 1
+    set start [expr {([rd 0xFC9E]+256*[rd 0xFC9F]-([rd 0xC003] ? 300 : 250))&65535}]
+    wr 0xC09B [expr {$start&255}]; wr 0xC09C [expr {$start>>8}]
+} {expect stopped [rd 0xC026] 0}
+case cow_does_not_restart_chase UpdateWalkingCows {wr 0xC060 0; cow 112 112; wr 0xC026 0; wr 0xC027 1; wr 0xC001 0} {expect stopped [rd 0xC026] 0; expect crossing [rd 0xC021] 113}
+case chasing_cow_tracks_screen UpdateScroll {wr 0xC060 0; cow 112 100; wr 0xC026 100; wr 0xC016 7} {expect y [rd 0xC022] 100}
+case cane_challenge_is_non_damaging CompleteStage {wr 0xC060 1} {
+    expect challenge [rd 0xC000] 12; expect hp [rd 0xC065] 0
+    expect question [debug read_block VRAM [expr {0x1800+3*32+6}] 19] "Voc[format %c 243]s tomam garapa?"
+}
+case collecting_cane_preserves_life UpdateFriendlyCane {wr 0xC000 12; wr 0xC060 1; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 126; wr 0xC09A 0} {
+    expect canes [rd 0xC058] 1; expect lives [rd 0xC006] 5; expect caught [rd 0xC09A] 1
+}
+case walking_deck_graphics DrawArenaStation {wr 0xC060 1} {
+    expect fishing [debug read_block VRAM [expr {0x1800+13*32+26}] 5] "PESCA"
+    expect water [debug read VRAM [expr {0x1800+10*32+24}]] 145
+    expect wood [debug read VRAM [expr {0x1800+14*32+24}]] 159
+}
+case peaceful_meeting_advances MeetingTick {wr 0xC000 11; wr 0xC060 0; wr 0xC063 1; wr 0xC064 0} {expect next [rd 0xC060] 1; expect card [rd 0xC000] 3}
+case cane_challenge_ends_without_attack CaneChallengeTick {wr 0xC000 12; wr 0xC060 1; wr 0xC063 1; wr 0xC064 0} {expect bonus [rd 0xC000] 7; expect no_damage [rd 0xC065] 12}
+case cane_is_occluded_by_full_foreground BuildBossSprites {wr 0xC000 12; wr 0xC060 1; cow 112 100; wr 0xC004 112; wr 0xC005 128; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 128} {expect slots [rd 0xC040] 24}
+case cane_is_visible_with_scanline_space BuildBossSprites {wr 0xC000 12; wr 0xC060 1; cow 112 100; wr 0xC004 112; wr 0xC005 128; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 96} {expect slots [rd 0xC040] 25}
+case bar_arrival_goes_to_bonus MeetingTick {wr 0xC000 11; wr 0xC060 2; wr 0xC063 1; wr 0xC064 0} {expect bonus [rd 0xC000] 7}
+case fishing_starts_in_unnamed_house LoadStageMap {wr 0xC060 0} {
+    expect house [rd [expr {0xD000+148*32+1}]] 148
+    if {[debug read_block memory [expr {0xD000+147*32+1}] 4] eq "VAV[format %c 193]"} {error "unexpected Vava title"}
+}
+case final_stage_is_cheese_fight CompleteStage {wr 0xC060 3} {expect boss [rd 0xC000] 4; expect hp [rd 0xC065] 12}
+case question_mark_is_uploaded LoadGraphics {} {
+    set expected [debug read_block memory $::sym(QuestionMarkGlyph) 8]
+    foreach bank {0 2048 4096} {expect glyph [debug read_block VRAM [expr {$bank+63*8}] 8] $expected}
 }
 set index -1
 set failures 0

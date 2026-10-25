@@ -9,14 +9,14 @@ for bank in range(3):
     assert v[bank*2048:(bank+1)*2048]==p,f'pattern bank {bank}'
     assert v[0x2000+bank*2048:0x2000+(bank+1)*2048]==c,f'color bank {bank}'
 s=(d/'sprites.bin').read_bytes()
-assert v[0x3800:0x3800+len(s)]==s
+expected_sprites=(d/'trio_patterns.bin').read_bytes()+s[256:]
+assert v[0x3800:0x3800+len(s)]==expected_sprites
 assert (d/'capture-palette.bin').read_bytes()==(d/'palette0.bin').read_bytes()
 assert v[0x1801:0x1806]==b'SCORE'
-assert bytes(v[a] for a in (0x181d,0x181e,0x181f))==bytes([140]*3)
+assert bytes(v[a] for a in (0x181b,0x181c,0x181d,0x181e,0x181f))==bytes([140]*5)
 assert all(t==193 or t in range(32,91) or 128<=t<=167 for t in v[0x1840:0x1b00])
-assert v[0x1821:0x1824]==b'GAS'
-assert v[0x1840-10:0x1840-2]==b'QUEIJOS '
-assert all(48<=ch<=57 for ch in v[0x1840-2:0x1840])
+assert v[0x1821:0x1825]==b'FOME'
+assert v[0x1840-10:0x1840]==b'          '
 print('Captured V9938: 3 pattern/color banks, sprite patterns, palette and fixed HUD match ROM assets')
 
 # Compare every pixel of the cheese over the bridge, including its clear border.
@@ -25,7 +25,7 @@ import json
 from PIL import Image
 meta=json.loads((d/'manifest.json').read_text())
 world=(d/'world.bin').read_bytes()
-palette=(d/'palette0.bin').read_bytes()
+palette=(d/'palette1.bin').read_bytes()
 levels=(0,43,81,118,153,187,221,255)
 def rgb(index):
     rb,g=palette[index*2:index*2+2]

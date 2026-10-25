@@ -2,9 +2,13 @@
 ; The third stage is settled after the garapa boss, before the bus sequence.
 CompleteStage:
     ld a,(_stage)
-    cp 3
-    jp z,BeginBoss
-    jp BeginCheeseBonus
+    or a
+    jp z,BeginGarapaMeeting
+    cp 1
+    jp z,BeginCaneChallenge
+    cp 2
+    jp z,BeginBarArrival
+    jp BeginBoss
 
 BeginCheeseBonus:
     ld a,7
@@ -49,13 +53,18 @@ BeginCheeseBonus:
     ld de,ScoreLabel
     ld bc,0707h
     call PutText
-    ld de,CheeseLabel
+    call GetCollectibleLabel
     ld bc,0A07h
     call PutText
     ld de,BonusLabel
     ld bc,0D07h
     call PutText
     ld de,BonusRateLabel
+    ld a,(_stage)
+    cp 1
+    jr nz,.rate
+    ld de,CaneRateLabel
+.rate:
     ld bc,1106h
     call PutText
     jp DrawBonusNumbers
@@ -123,3 +132,5 @@ DrawBonusNumbers:
 LevelDoneLabel: db "CONCLUIDA",0
 BonusLabel: db "BONUS",0
 BonusRateLabel: db "100 PONTOS POR QUEIJO",0
+
+CaneRateLabel: db "100 PONTOS POR CANA",0

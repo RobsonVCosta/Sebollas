@@ -1,8 +1,12 @@
-; Original, light country-style chiptune, on PSG channel C at low volume.
+; Original, light country-style chiptune, on PSG channel C at volume 9/15.
 ; Foreground effects own their channels; the tune pauses for the horn/refilling
 ; and resumes its current note once channel C is free again.
 UpdateMusic:
     ld a,(_state)
+    cp 11
+    jr z,.active
+    cp 12
+    jr z,.active
     cp 1
     jr z,.active
     cp 4
@@ -13,12 +17,16 @@ UpdateMusic:
     ld a,(_effectTime+2)
     or a
     ret nz ; never replace a crash or the low-fuel alert
+    ld a,(_state)
+    cp 4
+    jr z,.musicClock ; battle theme keeps channel C while the horn uses A/B
     ld a,(_hornPhase)
     or a
     jr nz,.duck
     ld a,(_refueling)
     or a
     jr nz,.duck
+.musicClock:
     ld a,(_musicClock)
     or a
     jr z,.nextNote
@@ -34,6 +42,14 @@ UpdateMusic:
     add hl,hl
     add hl,de
     ld de,MusicNotes
+    ld a,(_state)
+    cp 4
+    jr z,.battle
+    cp 12
+    jr nz,.score
+.battle:
+    ld de,BattleMusicNotes
+.score:
     add hl,de
     ld e,(hl)
     inc hl
@@ -61,7 +77,7 @@ UpdateMusic:
     cp 3
     jr c,.duck ; small gaps articulate each note
     ld a,10
-    ld e,5
+    ld e,9
     jp Psg_write
 .duck:
     ld a,10
@@ -148,3 +164,70 @@ MusicNotes:
     db 24
     dw 0
     db 12
+
+; Fast C-minor arpeggios replace the road melody during enemy encounters.
+BattleMusicNotes:
+    dw 428
+    db 6
+    dw 214
+    db 6
+    dw 360
+    db 6
+    dw 180
+    db 6
+    dw 428
+    db 6
+    dw 214
+    db 6
+    dw 285
+    db 6
+    dw 143
+    db 6
+    dw 428
+    db 6
+    dw 214
+    db 6
+    dw 320
+    db 6
+    dw 160
+    db 6
+    dw 428
+    db 6
+    dw 214
+    db 6
+    dw 285
+    db 6
+    dw 143
+    db 6
+    dw 453
+    db 6
+    dw 226
+    db 6
+    dw 360
+    db 6
+    dw 180
+    db 6
+    dw 453
+    db 6
+    dw 226
+    db 6
+    dw 285
+    db 6
+    dw 143
+    db 6
+    dw 480
+    db 6
+    dw 240
+    db 6
+    dw 380
+    db 6
+    dw 190
+    db 6
+    dw 428
+    db 6
+    dw 214
+    db 6
+    dw 360
+    db 6
+    dw 180
+    db 6

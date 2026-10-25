@@ -1,6 +1,9 @@
 ; One transparent 16x16 sprite rolls toward the car, with two rotation frames.
 ; Replaces the visible sound waves, keeping the scanline limit at eight.
 UpdateCheese:
+    ld a,(_stage)
+    cp 2
+    ret c
     ld a,(_driveStarted)
     or a
     ret z
@@ -95,7 +98,10 @@ DrawCheese:
     jp AppendSprite
 
 DrawCheeseHUD:
-    ld de,CheeseLabel
+    ld a,(_stage)
+    or a
+    ret z
+    call GetCollectibleLabel
     ld bc,0116h
     call PutText
     ld hl,NAMTBL+32+30

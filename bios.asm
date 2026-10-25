@@ -25,3 +25,5 @@ SPTPAT equ 3800h
 KEYSND equ 0F3DBh
 RG9SAV equ 0FFE8h
 MSXVER equ 002Dh
+
+JIFFY equ 0FC9Eh ; BIOS VBlank counter, 50/60 Hz

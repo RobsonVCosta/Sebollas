@@ -1,5 +1,5 @@
 ; Sebollas: all mutable state is explicitly initialized in C000-C6FF.
-_state          equ 0C000h ; 0 title, 1 road, 2 game over, 3 stage card, 4 boss, 5 ending, 6 credits, 7 bonus, 8/9 ending art
+_state          equ 0C000h ; 0 title, 1 road, 2 game over, 3 stage card, 4 boss, 5 ending, 6 credits, 7 bonus, 8/9 ending art, 10 stage intro
 _tick           equ 0C001h
 _framePhase     equ 0C002h
 _is60Hz         equ 0C003h
@@ -29,7 +29,7 @@ _drawY          equ 0C048h
 _copyCount      equ 0C049h
 _Print          equ 0C04Ah ; x,y,string pointer
 _fuel           equ 0C04Eh ; 0..100
-_fuelClock      equ 0C04Fh ; one unit per 6 game ticks
+_fuelClock      equ 0C04Fh ; one unit per 12 game ticks
 _refueling      equ 0C050h ; freezes scrolling while tank fills
 _terrainRow     equ 0C051h
 _fuelAlertClock equ 0C052h
@@ -79,6 +79,22 @@ _roadRow        equ 0C08Dh
 _roadRows       equ 0C08Eh
 _cowSerial      equ 0C08Fh
 _bossDefeat     equ 0C090h ; 0 fight, 1 blinking, 2 escaping
+_bossSprite     equ 0C091h ; x/y descriptor for the 32x32 reference sprite
+_hornAge        equ 0C099h ; envelope/vibrato position within each horn note
+_caneTotal      equ 0C09Ah ; collected canes during stage 1
+_cowChaseStart  equ 0C09Bh ; BIOS-time origin of the five-second pursuit
+_playerSprite   equ 0C0A0h
+_budgetY        equ 0C0A8h
+_budgetLines    equ 0C0A9h
+WorldMap        equ 0D000h ; active route copied from ROM, safe below BIOS RAM
+WorldMap1       equ WorldMap
+WorldMap3       equ WorldMap
+RoadCenters     equ 0E400h
+RoadCenters1    equ RoadCenters
+RoadCenters3    equ RoadCenters
+RoadBounds      equ 0E4A0h
+RoadBounds1     equ RoadBounds
+RoadBounds3     equ RoadBounds
 _satBuffer      equ 0C100h ; 128 bytes
 _colorBuffer    equ 0C180h ; 512 bytes
 _screenBuffer   equ 0C400h ; 768 bytes

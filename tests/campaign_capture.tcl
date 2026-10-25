@@ -36,7 +36,7 @@ after time 7 {
 after time 7.6 {screenshot -raw previews/garapa-openmsx-raw.png}
 after time 8 {draw_checkpoint {BeginEnding}}
 after time 9 {
-    foreach {addr val} {0xC005 136 0xC06E 1 0xC071 25 0xC072 144 0xC073 160 0xC074 176 0xC001 8} {debug write memory $addr $val}
+    foreach {addr val} {0xC005 136 0xC06E 5 0xC071 25 0xC072 144 0xC073 160 0xC074 176 0xC001 8} {debug write memory $addr $val}
     draw_checkpoint {DrawBusRoad BuildEndingSprites UploadSprites}
 }
 after time 9.6 {screenshot -raw previews/onibus-openmsx-raw.png}
