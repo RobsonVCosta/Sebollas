@@ -34,6 +34,7 @@ proc prepare {} {
     for {set a 0xC0E5} {$a<0xC0E9} {incr a} {wr $a 0}
     wr 0xC0E9 88
     for {set a 0xC0EA} {$a<=0xC0F0} {incr a} {wr $a 0}
+    for {set a 0xC0F1} {$a<=0xC0F4} {incr a} {wr $a 0}
     for {set a 0xC380} {$a<0xC3B0} {incr a} {wr $a 0}
     for {set a 0xC008} {$a<0xC00C} {incr a} {wr $a 0}
     for {set a 0xC020} {$a<0xC038} {incr a} {wr $a 0}
@@ -585,7 +586,7 @@ case cheese_pair_moves UpdateCane {wr 0xC000 4; wr 0xC060 3; wr 0xC069 1; wr 0xC
     expect first_y [rd 0xC06B] 67; expect second_y [rd 0xC0BD] 67
 }
 case cheese_pair_sprite_budget BuildBossSprites {wr 0xC000 4; wr 0xC060 3; wr 0xC069 1; wr 0xC06A 110; wr 0xC06B 64; wr 0xC0BB 1; wr 0xC0BC 130; wr 0xC0BD 64} {
-    expect slots [rd 0xC040] 19
+    expect slots [rd 0xC040] 18
     set counts [lrepeat 192 0]
     for {set s 0} {$s<[rd 0xC040]} {incr s} {
         set y [expr {[rd [expr {0xC100+$s*4}]]+1}]
@@ -754,9 +755,9 @@ case cheese_projectile_moves_faster UpdateCane {wr 0xC000 4; wr 0xC060 3; wr 0xC
     expect y [rd 0xC06B] 67
 }
 case cheese_fight_sprite_budget BuildBossSprites {wr 0xC000 4; wr 0xC060 3; wr 0xC005 80; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 64} {
-    expect slots [rd 0xC040] 17
+    expect slots [rd 0xC040] 16
     set counts [lrepeat 192 0]
-    for {set slot 0} {$slot<17} {incr slot} {
+    for {set slot 0} {$slot<[rd 0xC040]} {incr slot} {
         set y [expr {[rd [expr {0xC100+$slot*4}]]+1}]
         for {set line $y} {$line<$y+16 && $line<192} {incr line} {lset counts $line [expr {[lindex $counts $line]+1}]}
     }
@@ -889,26 +890,18 @@ case hundred_canes_bonus CheeseBonusTick {wr 0xC000 7; wr 0xC060 1; wr 0xC09E 1;
     expect remaining [rd 0xC058] 153; expect hundred [rd 0xC09E] 0; expect score [bcd] 00000100
 }
 case herd_starts_with_one UpdateCaneHerd {wr 0xC000 12; wr 0xC060 1} {expect level [rd 0xC0AC] 1; expect cow1 [rd 0xC020] 1; expect cow2 [rd 0xC028] 0}
-case herd_adds_second_cow UpdateCaneHerd {wr 0xC000 12; wr 0xC060 1; wr 0xC063 232; wr 0xC064 3} {expect level [rd 0xC0AC] 2; expect cow2 [rd 0xC028] 1}
-case herd_adds_third_cow UpdateCaneHerd {wr 0xC000 12; wr 0xC060 1; wr 0xC063 208; wr 0xC064 7} {expect level [rd 0xC0AC] 3; expect cow3 [rd 0xC030] 1}
+case herd_stays_one_after_1000_ticks UpdateCaneHerd {wr 0xC000 12; wr 0xC060 1; wr 0xC063 232; wr 0xC064 3; wr 0xC028 1} {expect level [rd 0xC0AC] 1; expect cow2 [rd 0xC028] 0}
+case herd_stays_one_after_2000_ticks UpdateCaneHerd {wr 0xC000 12; wr 0xC060 1; wr 0xC063 208; wr 0xC064 7; wr 0xC030 1} {expect level [rd 0xC0AC] 1; expect cow3 [rd 0xC030] 0}
 case trio_heads_do_not_collide CheckHits {wr 0xC060 0; cow 112 100} {expect lives [rd 0xC006] 5}
 case trio_lower_body_collides CheckHits {wr 0xC060 0; cow 112 136} {expect lives [rd 0xC006] 4}
 case cheese_man_new_phrase BeginBoss {wr 0xC060 3} {expect phrase [debug read_block VRAM [expr {0x1800+3*32+5}] 23] "Experimentem meu queijo"}
-case third_arena_cow_can_hit CheckHits {wr 0xC000 12; wr 0xC060 1; wr 0xC030 1; wr 0xC031 128; wr 0xC032 136} {expect lives [rd 0xC006] 4}
-case new_herd_enters_far_side UpdateCaneHerd {wr 0xC000 12; wr 0xC060 1; wr 0xC004 216; wr 0xC063 208; wr 0xC064 7} {expect x [rd 0xC031] 48; expect toward_right [rd 0xC033] 0}
-case three_cows_preserve_sprite_budget BuildBossSprites {
+case new_herd_enters_far_side UpdateCaneHerd {wr 0xC000 12; wr 0xC060 1; wr 0xC004 216; wr 0xC063 208; wr 0xC064 7} {expect x [rd 0xC021] 48; expect toward_right [rd 0xC023] 0}
+case one_donkey_preserves_sprite_budget BuildBossSprites {
     wr 0xC000 12; wr 0xC060 1; cow 112 96
-    wr 0xC028 1; wr 0xC029 112; wr 0xC02A 128
-    wr 0xC030 1; wr 0xC031 112; wr 0xC032 160
     wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 128
 } {
-    expect slots [rd 0xC040] 32
-    set counts [lrepeat 192 0]
-    for {set slot 0} {$slot<32} {incr slot} {
-        set y [expr {[rd [expr {0xC100+$slot*4}]]+1}]
-        for {set line $y} {$line<$y+16 && $line<192} {incr line} {lset counts $line [expr {[lindex $counts $line]+1}]}
-    }
-    expect per_line [lindex [lsort -integer $counts] end] 8
+    expect slots [rd 0xC040] 16
+    arena_scanlines
 }
 case gauge_has_closed_ends DrawFuel {} {expect left [debug read VRAM 0x1826] 166; expect right [debug read VRAM 0x1831] 167}
 case peaceful_meeting_has_no_caption BeginGarapaMeeting {wr 0xC060 0; wr 0xC017 0; debug write_block VRAM 0x1868 [string repeat " " 15]} {expect no_caption [debug read_block VRAM 0x1868 15] [string repeat " " 15]}
@@ -1040,23 +1033,6 @@ case final_gate_enters_boss UpdateJourney {
 case final_approach_refuel_still_pauses UpdateScroll {
     wr 0xC060 3; wr 0xC017 0; wr 0xC016 7; wr 0xC050 1
 } {expect clock [rd 0xC016] 7}
-case arena_cows_init InitBossCows {wr 0xC060 3} {
-    expect lane1 [rd 0xC022] 112; expect lane2 [rd 0xC02A] 152
-    expect delay [rd 0xC024] 30
-    expect patterns [debug read_block VRAM [expr {0x3800+32*8}] 512] [debug read_block memory [expr {$::sym(SpritePatterns)+32*8}] 512]
-}
-case arena_cows_enter UpdateBossCows {wr 0xC001 0; wr 0xC02C 20} {
-    expect cow [rd 0xC020] 1; expect from_left [rd 0xC021] 0
-}
-case arena_honk_speeds_cow UpdateBossCows {cow 100 112 1; wr 0xC001 0; wr 0xC02C 20} {
-    expect x [rd 0xC021] 102
-}
-proc arena_cow_setup {} {
-    wr 0xC000 4; wr 0xC060 3; wr 0xC005 112
-    cow 112 112
-    wr 0xC028 1; wr 0xC029 176; wr 0xC02A 152
-    foreach base {0xC069 0xC0BB 0xC0E1} {wr $base 1; wr [expr {$base+1}] 120}
-}
 proc arena_scanlines {} {
     set counts [lrepeat 192 0]
     for {set slot 0} {$slot<[rd 0xC040]} {incr slot} {
@@ -1065,24 +1041,28 @@ proc arena_scanlines {} {
     }
     if {[lindex [lsort -integer $counts] end]>8} {error "arena sprite overflow"}
 }
-case arena_cows_fit_with_three_cheeses BuildBossSprites {
-    arena_cow_setup
-    wr 0xC005 80
-    wr 0xC06B 144; wr 0xC0BD 160; wr 0xC0E3 144
+case cheese_battle_clears_cows BeginBoss {
+    wr 0xC060 3; wr 0xC020 1; wr 0xC028 1; wr 0xC030 1
+} {foreach address {0xC020 0xC028 0xC030} {expect no_cow_$address [rd $address] 0}}
+case cheese_battle_does_not_spawn_cows BossTick {
+    wr 0xC060 3; wr 0xC000 4; wr 0xC018 1
+} {foreach address {0xC020 0xC028 0xC030} {expect no_cow_$address [rd $address] 0}}
+case cheese_battle_does_not_draw_stale_cows BuildBossSprites {
+    wr 0xC060 3; wr 0xC000 4; wr 0xC020 1; wr 0xC028 1; wr 0xC030 1
 } {
-    expect slots [rd 0xC040] 29; expect visible [rd 0xC026] 1
+    expect only_car_and_boss [rd 0xC040] 14
+    for {set slot 0} {$slot<[rd 0xC040]} {incr slot} {
+        set pattern [rd [expr {0xC100+4*$slot+2}]]
+        if {$pattern>=32 && $pattern<96} {error "cow sprite in cheese battle"}
+    }
     arena_scanlines
 }
-case arena_cows_yield_to_projectiles BuildBossSprites {
-    arena_cow_setup
-    wr 0xC06B 80; wr 0xC0BD 112; wr 0xC0E3 112
-} {expect hidden [rd 0xC026] 0; arena_scanlines}
-case arena_hidden_cow_cannot_hit CheckHits {
-    wr 0xC000 4; wr 0xC060 3; cow 120 128
-} {expect lives [rd 0xC006] 5}
-case arena_visible_cow_hits CheckHits {
-    wr 0xC000 4; wr 0xC060 3; cow 120 128; wr 0xC026 1
-} {expect lives [rd 0xC006] 4}
+case garapa_battle_donkey_does_not_shoot UpdateDonkeyShots {
+    wr 0xC000 12; wr 0xC060 1; cow 100 80
+} {expect no_pellet [rd 0xC380] 0}
+case garapa_entry_discards_old_pellets BeginCaneChallenge {
+    wr 0xC060 1; wr 0xC380 1; wr 0xC388 1; wr 0xC390 1
+} {foreach address {0xC380 0xC388 0xC390} {expect no_old_pellet_$address [rd $address] 0}}
 case final_gate_moves_with_scroll UpdateScroll {
     wr 0xC060 3; wr 0xC017 0; wr 0xC016 7; wr 0xC005 160
 } {expect gate [rd 0xC0E9] 96; expect player_stays [rd 0xC005] 160}
@@ -1109,6 +1089,77 @@ case secret_arrow_does_not_repeat UpdateSecretSelection {wr 0xC0C3 1; wr 0xC0EC 
 foreach {choice state stage} {0 13 0 1 1 1 2 12 1 3 1 2 4 1 3 5 4 3 6 8 3} {
     case secret_launch_$choice LaunchSecretStage [list wr 0xC0EC $choice] "expect state \[rd 0xC000\] $state; expect stage \[rd 0xC060\] $stage; expect lives \[rd 0xC006\] 5"
 }
+proc fake_render_gap {ticks} {
+    wr 0xC0F2 [expr {([rd 0xFC9E]-$ticks)&255}]
+    wr 0xC0F3 [rd 0xC000]
+    wr 0xC002 2
+}
+case frameskip_normal_gap UpdateFrameSkip {fake_render_gap 1} {expect draw [rd 0xC0F1] 0}
+case frameskip_normal_pal_ntsc_gap UpdateFrameSkip {
+    fake_render_gap [expr {[rd 0xC003] ? 2 : 1}]; wr 0xC002 1
+} {expect expected_gap [rd 0xC0F1] 0}
+foreach state {1 4 12} {
+    case frameskip_late_gameplay_$state UpdateFrameSkip [list apply {{state} {
+        wr 0xC000 $state; fake_render_gap 3
+    }} $state] {expect skip [rd 0xC0F1] 1}
+}
+case frameskip_allows_second_late_tick UpdateFrameSkip {
+    fake_render_gap 3; wr 0xC0F1 1
+} {expect second_skip [rd 0xC0F1] 2}
+case frameskip_allows_third_late_tick UpdateFrameSkip {
+    fake_render_gap 3; wr 0xC0F1 2
+} {expect third_skip [rd 0xC0F1] 3}
+case frameskip_never_four_in_a_row UpdateFrameSkip {
+    fake_render_gap 3; wr 0xC0F1 3
+} {expect draw [rd 0xC0F1] 0}
+case frameskip_recovers_without_second_skip UpdateFrameSkip {
+    fake_render_gap 1; wr 0xC0F1 1
+} {expect draw [rd 0xC0F1] 0}
+case frameskip_new_scene_draws UpdateFrameSkip {
+    fake_render_gap 3; wr 0xC0F3 4
+} {expect draw [rd 0xC0F1] 0}
+foreach state {0 2 3 5 6 7 8 9 10 11 13} {
+    case frameskip_never_skips_scene_$state UpdateFrameSkip [list apply {{state} {
+        wr 0xC000 $state; fake_render_gap 3
+    }} $state] {expect draw [rd 0xC0F1] 0}
+}
+case frameskip_defers_hud DrawHUD {
+    wr 0xC0F1 1; wr 0xC0F3 1
+    set ::before_hud [debug read_block VRAM 0x1800 64]
+} {
+    expect no_write [debug read_block VRAM 0x1800 64] $::before_hud
+    expect pending [rd 0xC0F4] 1
+}
+case frameskip_skips_sprite_vram UploadSprites {
+    wr 0xC0F1 1; wr 0xC0F3 1; wr 0xC0F4 1
+    set ::before_sat [debug read_block VRAM 0x1E00 128]
+    set ::before_colors [debug read_block VRAM 0x1C00 512]
+} {
+    expect same_sat [debug read_block VRAM 0x1E00 128] $::before_sat
+    expect same_colors [debug read_block VRAM 0x1C00 512] $::before_colors
+    expect hud_still_pending [rd 0xC0F4] 1
+}
+case frameskip_next_upload_flushes_hud UploadSprites {wr 0xC0F4 1} {
+    expect pending_cleared [rd 0xC0F4] 0
+    expect sat [debug read_block VRAM 0x1E00 128] [debug read_block memory 0xC100 128]
+    expect colors [debug read_block VRAM 0x1C00 512] [debug read_block memory 0xC180 512]
+}
+case frameskip_controls_still_move MovePlayer {
+    wr 0xC0F1 1; wr 0xC0F3 1; keymatrixdown 8 128
+} {expect x [rd 0xC004] 122}
+case frameskip_collisions_still_hit CheckHits {
+    wr 0xC0F1 1; wr 0xC0F3 1; cow 112 128
+} {expect lives [rd 0xC006] 4}
+case frameskip_music_keeps_time UpdateSound {
+    wr 0xC0F1 1; wr 0xC0F3 1; wr 0xC05C 8; wr 0xC05D 214
+} {expect clock [rd 0xC05C] 7; expect melody [debug read {PSG regs} 10] 9}
+case frameskip_still_builds_sprites BuildBossSprites {
+    wr 0xC000 4; wr 0xC060 3; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 64
+    wr 0xC0F1 1; wr 0xC0F3 4
+} {expect slots [rd 0xC040] 16; arena_scanlines}
+case frameskip_scene_setup_resets ResetFrameSkip {
+    wr 0xC0F1 1; wr 0xC0F4 1
+} {expect draw [rd 0xC0F1] 0; expect hud_clean [rd 0xC0F4] 0}
 set index -1
 set failures 0
 set reports {}

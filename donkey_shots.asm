@@ -1,5 +1,8 @@
 ; Pellets originate at the rear and keep the direction aimed at the player.
 UpdateDonkeyShots:
+    ld a,(_state)
+    cp 1
+    ret nz ; only walking roads have donkey pellets, never the garapa battle
     ld a,(_stage)
     cp 2
     ret nc

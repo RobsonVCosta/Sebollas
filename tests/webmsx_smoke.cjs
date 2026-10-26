@@ -124,8 +124,8 @@ const rom = fs.readFileSync(path.join(root, 'Sebollas.rom'));
             assert.ok(await read(0xC04E) > 30, 'fishing deck also works during cane collection');
             await shot('cane-fishing-deck');
             await write({[0xC063]: 208, [0xC064]: 7}); await frames(5);
-            assert.equal(await read(0xC0AC), 3, 'herd grows to three cows');
-            await shot('cane-three-cows');
+            assert.equal(await read(0xC0AC), 1, 'garapa battle keeps a single donkey');
+            await shot('cane-single-donkey');
             await write({[0xC063]: 128, [0xC064]: 0}); await frames(5);
             await shot('garapa-question');
             // Fire using the actual keyboard; a real collision delivers the final hit.

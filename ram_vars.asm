@@ -141,6 +141,10 @@ _secretChoice equ 0C0ECh ; 0..6, displayed as 1..7
 _secretDrawIndex equ 0C0EDh
 _secretDrawDest equ 0C0EEh ; word: SCREEN 5 VRAM address
 _secretInk equ 0C0F0h
+_skipGraphics equ 0C0F1h ; consecutive skipped sprite/HUD uploads: 0..3
+_lastFrameJiffy equ 0C0F2h ; low byte of VBlank clock at previous logical tick
+_frameSkipState equ 0C0F3h ; scene measured by the adaptive renderer
+_hudDirty equ 0C0F4h ; deferred HUD refresh, flushed with next sprite upload
 _satBuffer      equ 0C100h ; 128 bytes
 _colorBuffer    equ 0C180h ; 512 bytes
 _screenBuffer   equ 0C400h ; 768 bytes

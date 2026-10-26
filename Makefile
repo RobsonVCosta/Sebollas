@@ -25,6 +25,8 @@ test: all
 test-emulator: all
 	openmsx -machine C-BIOS_MSX2_EU -cart Sebollas.rom -romtype ASCII8 -script tests/openmsx_suite.tcl
 	openmsx -machine C-BIOS_MSX2_JP -cart Sebollas.rom -romtype ASCII8 -script tests/openmsx_suite.tcl
+	openmsx -machine C-BIOS_MSX2_EU -cart Sebollas.rom -romtype ASCII8 -script tests/frame_skip.tcl
+	openmsx -machine C-BIOS_MSX2_JP -cart Sebollas.rom -romtype ASCII8 -script tests/frame_skip.tcl
 	openmsx -machine C-BIOS_MSX2_EU -cart Sebollas.rom -romtype ASCII8 -script tests/secret_menu.tcl
 	openmsx -machine C-BIOS_MSX2_JP -cart Sebollas.rom -romtype ASCII8 -script tests/secret_menu.tcl
 	openmsx -machine C-BIOS_MSX2_EU -cart Sebollas.rom -romtype ASCII8 -script tests/ending_music.tcl

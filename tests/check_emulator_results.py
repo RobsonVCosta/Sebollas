@@ -6,7 +6,10 @@ for hz in (50,60):
     suite=(ROOT/f'emulator-{hz}.txt').read_text()
     stress=(ROOT/f'stress-{hz}.txt').read_text()
     assert 'FAIL' not in suite,suite
-    assert '386 Z80 cases; 0 failures' in suite,suite
+    assert '412 Z80 cases; 0 failures' in suite,suite
+    frame_skip=(ROOT/f'frame-skip-{hz}.txt').read_text()
+    assert frame_skip.startswith('PASS'),frame_skip
+    print(frame_skip.strip())
     secret_menu=(ROOT/f'secret-menu-{hz}.txt').read_text()
     assert secret_menu.startswith('PASS'),secret_menu
     print(secret_menu.strip())

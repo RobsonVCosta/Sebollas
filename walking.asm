@@ -104,7 +104,7 @@ BeginCaneChallenge:
     call ResetDonkeyShots
     ld a,12
     ld (_state),a
-    ld hl,0 ; elapsed time controls herd growth; there is no time limit
+    ld hl,0 ; elapsed battle time; there is no time limit
     ld (_stageTimer),hl
     xor a
     ld (_caneTotal),a
@@ -176,10 +176,6 @@ CaneChallengeTick:
     or a
     jp nz,.render
     call CheckHits
-    ld a,(_state)
-    cp 12
-    ret nz
-    call UpdateDonkeyShots
     ld a,(_state)
     cp 12
     ret nz
@@ -602,36 +598,12 @@ AppendWalkingCane:
 UpdateCaneHerd:
     ld a,1
     ld (_herdLevel),a
-    ld hl,(_stageTimer)
-    ld de,1000
-    or a
-    sbc hl,de
-    jr c,.update
-    ld a,2
-    ld (_herdLevel),a
-    or a
-    sbc hl,de
-    jr c,.update
-    ld a,3
-    ld (_herdLevel),a
-.update:
+    xor a
+    ld (_cows+8),a
+    ld (_cows+16),a
     ld ix,_cows
     ld a,80
     ld hl,_cowChaseStart
-    call .lane
-    ld a,(_herdLevel)
-    cp 2
-    ret c
-    ld ix,_cows+8
-    ld a,112
-    ld hl,_cowChaseStart2
-    call .lane
-    ld a,(_herdLevel)
-    cp 3
-    ret c
-    ld ix,_cows+16
-    ld a,144
-    ld hl,_cowChaseStart3
 .lane:
     ld (_cowTimePtr),hl
     ld (_cowLaneMin),a

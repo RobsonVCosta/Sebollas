@@ -9,3 +9,4 @@ __pycache__/
 /resources/generated/campaign-*.txt
 /resources/generated/going-home-*.txt
 /resources/generated/secret-menu-*.txt
+/resources/generated/frame-skip-*.txt

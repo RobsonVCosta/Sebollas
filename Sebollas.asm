@@ -59,6 +59,7 @@ MainLoop:
 .savePhase:
     ld (_framePhase),a
 .tick:
+    call UpdateFrameSkip
     ld hl,_tick
     inc (hl)
     call UpdateSound
@@ -138,6 +139,7 @@ SetupGameVideo:
     jp ENASCR
 
 SetupGameVideoHidden:
+    call ResetFrameSkip
     call DISSCR
     ld a,2
     ld (07000h),a ; ASCII8: game data in 8000-9FFF
@@ -720,16 +722,6 @@ CheckHits:
     ld c,36
     ld d,24
     ld e,48
-    ld a,(_state)
-    cp 4
-    jr nz,.normalCow
-    ld a,(_stage)
-    cp 3
-    jr nz,.normalCow
-    ld a,(ix+6)
-    or a
-    ret z
-.normalCow:
     ld a,(_stage)
     cp 2
     jr nc,.body
@@ -769,6 +761,14 @@ AddScore:
     ret
 
 DrawHUD:
+    call ShouldSkipGraphics
+    or a
+    jr z,.draw
+    ld (_hudDirty),a
+    ret
+.draw:
+    xor a
+    ld (_hudDirty),a
     ld hl,_scoreBCD_8Digits
     ld de,_score
     call BcdToString
@@ -981,6 +981,12 @@ BuildSprites:
     ld a,(_stage)
     cp 2
     jr c,.cows
+    cp 3
+    jr nz,.dustDriving
+    ld a,(_state)
+    cp 4
+    jr z,.cows
+.dustDriving:
     ld a,(_driveStarted)
     or a
     jr z,.cows
@@ -1065,6 +1071,12 @@ DrawLargeSprite:
     djnz .row
     ret
 UploadSprites:
+    call ShouldSkipGraphics
+    or a
+    ret nz
+    ld a,(_hudDirty)
+    or a
+    call nz,DrawHUD
     ld hl,_colorBuffer
     ld de,SPRCLR
     ld bc,512
@@ -1076,7 +1088,6 @@ UploadSprites:
 
     include bonus.asm
     include campaign.asm
-    include boss_cows.asm
     include donkey_shots.asm
     include cheese.asm
     include route.asm
@@ -1085,6 +1096,7 @@ UploadSprites:
     include math.asm
     include sfx.inc
     include music.asm
+    include frame_skip.asm
     include title.asm
     include secret_menu.asm
     include ending_art.asm
