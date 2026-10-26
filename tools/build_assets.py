@@ -19,6 +19,7 @@ PALETTES=[
 # Reserve 6 as a second black entry: 6 OR 9 gives white (15) in sprite mode 2.
 # The scenery keeps its brown tone in slot 13; dark details use black slot 1.
 for pal in PALETTES:
+    pal[0]=(2,1,0) # dark brown stone shadows; SCREEN 4 uses opaque color zero
     pal[13]=pal[6]
     pal[6]=(0,0,0)
     pal[10]=(7,6,1) # the cheese keeps the same yellow in every stage

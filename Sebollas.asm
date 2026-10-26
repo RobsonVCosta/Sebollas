@@ -138,6 +138,7 @@ SetupGameVideo:
     ld (KEYSND),a
     ld a,(RG8SAV)
     and 0FDh
+    or 020h ; opaque background color 0 supplies the dark-brown stone shade
     ld c,8
     call WriteVDP
     ; Force 192 visible lines, preserving the BIOS 50/60Hz selection.
@@ -159,7 +160,7 @@ SetupGameVideo:
     ld a,7
     ld c,6
     call WriteVDP
-    xor a
+    ld a,1 ; black border while palette entry 0 is dark brown
     ld c,7
     call WriteVDP
     call LoadGraphics

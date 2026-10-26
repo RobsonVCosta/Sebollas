@@ -242,6 +242,10 @@ case play_still_starts_fresh MenuTick {
     wr 0xC000 0; wr 0xC01A 1; wr 0xC0C0 1; wr 0xC0C1 3; wr 0xC0C2 0
     wr 0xC00A 18; keymatrixdown 8 1
 } {expect prologue [rd 0xC000] 13; expect stage [rd 0xC060] 0; expect score [bcd] 00000000}
+case dark_brown_stone_mode SetupGameVideo {} {
+    expect opaque_background_zero [expr {[debug read {VDP regs} 8]&32}] 32
+    expect black_border [debug read {VDP regs} 7] 1
+}
 case title_to_game ResetGame {} {
     expect mode [rd 0xFCAF] 4
     expect height [expr {[debug read {VDP regs} 9]&128}] 0

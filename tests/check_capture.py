@@ -46,6 +46,22 @@ for y in range(16):
         assert bridge.getpixel((144+x,96+y))==rgb(color),(x,y)
 print('Captured cheese: transparent border and holes preserve the actual bridge pixels')
 
+# Color zero is deliberately opaque for dark-brown stone shadows.
+# Sprites are excluded so their pixels cannot hide a stone under the actors.
+shadow_pixels=0
+for py in range(16,192):
+    for px in range(256):
+        if (120<=px<136 and 112<=py<160) or (144<=px<160 and 96<=py<112): continue
+        tile=world[(76+(py-16)//8)*32+px//8]
+        if tile not in meta['road_stone_tiles']: continue
+        bits=p[tile*8+py%8]
+        color=c[tile*8+py%8]
+        if bits&(128>>(px%8)) and color>>4==0:
+            assert bridge.getpixel((px,py))==rgb(0),('stone shadow',px,py)
+            shadow_pixels+=1
+assert shadow_pixels>=5,shadow_pixels
+print('Captured stones: dark-brown shadows render correctly without black pixels')
+
 # The opening uses SCREEN 5 and its own palette; PLAY may be on or off.
 opening=(d/'capture-title-vram.bin').read_bytes()
 expected=bytearray((d/'title_bitmap.bin').read_bytes())

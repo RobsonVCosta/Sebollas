@@ -68,7 +68,7 @@ make                  # monta a ROM e os símbolos
 make assets           # recria sprites, mapas e imagens de 256 cores
 make previews         # recria prévias estáticas
 make test             # montagem e 16 testes Python
-make test-emulator    # 288 rotinas Z80 e campanha completa em 50/60 Hz
+make test-emulator    # 289 rotinas Z80 e campanha completa em 50/60 Hz
 make captures         # capturas reais do V9938
 ```
 
@@ -117,3 +117,5 @@ Na estrada que leva ao desafio das canas, o último passo do scroll abre automat
 “Indo pescar” tem 108 passos de scroll, cerca de 22% menos que o percurso anterior de 138. Os dois decks, as duas pontes, a casa inicial e o encontro com o garoto da garapa foram preservados.
 
 As pedras usam a opção 2 aprovada, com quatro tamanhos de lascas irregulares. A introdução e os créditos mantêm a fonte de 8 pixels, com três pixels extras entre as linhas (passo de 11 pixels nas linhas consecutivas).
+
+As sombras das pedras usam marrom escuro (RGB de 3 bits: 2, 1, 0), em vez de preto.

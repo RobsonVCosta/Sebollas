@@ -190,6 +190,17 @@ class Assets(unittest.TestCase):
             for y in range(lo,hi+1):
                 self.assertIn(146,world[y*32:(y+1)*32])
         self.assertEqual(world[118*32+1],148)
+    def test_opaque_zero_does_not_fill_transparent_sprites(self):
+        data=ROOT/'resources/generated'
+        for pattern_file,color_file in (
+            ('sprites.bin','sprite_colors.bin'),('trio_patterns.bin','trio_colors.bin'),
+            ('donkey_patterns.bin','donkey_colors.bin'),('cheese_boss_patterns.bin','cheese_boss_colors.bin'),
+            ('enemy_cheese_patterns.bin','enemy_cheese_colors.bin')):
+            patterns=(data/pattern_file).read_bytes();colors=(data/color_file).read_bytes()
+            for n in range(len(colors)//16):
+                for y in range(16):
+                    if colors[n*16+y]&15==0:
+                        self.assertEqual(patterns[n*32+y]|patterns[n*32+16+y],0,(pattern_file,n,y))
     def test_cheese_enemy_graphics_fit_shared_vram_slots(self):
         data=ROOT/'resources/generated'
         self.assertEqual(len((data/'cheese_boss_patterns.bin').read_bytes()),256)
