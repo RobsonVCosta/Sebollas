@@ -201,7 +201,7 @@ class Assets(unittest.TestCase):
                 for y in range(16):
                     if colors[n*16+y]&15==0:
                         self.assertEqual(patterns[n*32+y]|patterns[n*32+16+y],0,(pattern_file,n,y))
-    def test_supplied_music_fits_psg_and_loops_at_original_length(self):
+    def test_sheet_music_fits_psg_and_preserves_tempo(self):
         import json,hashlib
         data=ROOT/'resources/generated'
         manifest=json.loads((data/'music_manifest.json').read_text())
@@ -214,7 +214,9 @@ class Assets(unittest.TestCase):
             self.assertLessEqual(int.from_bytes(packed[i:i+2],'little'),4095)
             self.assertLessEqual(int.from_bytes(packed[i+2:i+4],'little'),4095)
             self.assertGreater(packed[i+4],0);ticks+=packed[i+4]
-        self.assertEqual(ticks,638)
+        self.assertEqual(ticks,round(14*4*60*50/148))
+        self.assertEqual(manifest["tempo_bpm"],148)
+        self.assertEqual(manifest["measures"],14)
         self.assertEqual(packed[-5:-1],bytes(4))
     def test_cheese_enemy_graphics_fit_shared_vram_slots(self):
         data=ROOT/'resources/generated'

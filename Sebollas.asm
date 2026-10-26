@@ -97,6 +97,10 @@ MainLoop:
     ld a,(_stage)
     cp 2
     call c,UpdatePlayerCane
+    call UpdateDonkeyShots
+    ld a,(_state)
+    cp 1
+    jp nz,MainLoop
     call CheckHits
     ld a,(_state)
     cp 1
@@ -130,6 +134,11 @@ MapCartridgePage2:
     jp ENASLT
 
 SetupGameVideo:
+    call SetupGameVideoHidden
+    jp ENASCR
+
+SetupGameVideoHidden:
+    call DISSCR
     ld a,2
     ld (07000h),a ; ASCII8: game data in 8000-9FFF
     inc a
@@ -169,7 +178,10 @@ SetupGameVideo:
     call WriteVDP
     call LoadGraphics
     call HideSprites
-    jp ENASCR
+    ld hl,NAMTBL
+    ld bc,768
+    ld a,32
+    jp FILVRM
 
 WriteVDP:
     ld b,a
@@ -264,7 +276,6 @@ MenuTick:
     or a
     jp nz,ContinueGame
 .newGame:
-    call SoundStart
     jp ResetGame
 .title:
     xor a
@@ -467,14 +478,21 @@ UpdateScroll:
     jr z,.endOfRoad
     ld a,(_stage)
     cp 2
-    ld b,7
+    ld b,8
     jr nc,.speed
-    ld b,15
+    ld b,16
+    or a
+    jr z,.speed
+    ld b,14 ; Garapa: a modest increase over the fishing route
 .speed:
     ld a,(_scrollClock)
     inc a
-    and b
+    cp b
+    jr c,.saveClock
+    xor a
+.saveClock:
     ld (_scrollClock),a
+    or a
     ret nz
     ld a,(_mapRow)
     dec a
@@ -485,6 +503,7 @@ UpdateScroll:
     cp 1
     jp z,BeginCaneChallenge
 .moveActors:
+    call ScrollDonkeyShots
     call ScrollRoadCheese
     ld ix,_cows
     call .moveCow
@@ -1021,6 +1040,7 @@ UploadSprites:
 
     include bonus.asm
     include campaign.asm
+    include donkey_shots.asm
     include cheese.asm
     include route.asm
     include initRAM.asm

@@ -3,11 +3,30 @@
 from pathlib import Path
 import hashlib
 import json
+from fractions import Fraction
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'resources/generated'
 score=json.loads((ROOT/'resources/sultans-score.json').read_text())
 assert hashlib.sha256((ROOT/'resources'/score['source']).read_bytes()).hexdigest()==score['source_sha256']
-events=score['events']
+# Quantize absolute musical positions rather than accumulating rounded lengths.
+# One silent tick releases each note; tied notes are already merged in the score.
+length=round(Fraction(score['measures']*4*60*50,score['tempo_bpm']))
+tracks={voice:[0]*length for voice in ('lead','bass')}
+for voice,notes in score['voices'].items():
+    for note in notes:
+        start=Fraction(note['beat']);end=start+Fraction(note['duration'])
+        a=round(start*60*50/score['tempo_bpm'])
+        b=round(end*60*50/score['tempo_bpm'])
+        release=1 if b-a>=3 else 0
+        assert 0<=a<b<=length
+        assert not any(tracks[voice][a:b])
+        tracks[voice][a:b-release]=[note['midi']]*(b-a-release)
+events=[]
+for lead,bass in zip(tracks['lead'],tracks['bass']):
+    if events and (events[-1]['lead'],events[-1]['bass'])==(lead,bass) and events[-1]['ticks']<255:
+        events[-1]['ticks']+=1
+    else:
+        events.append({'lead':lead,'bass':bass,'ticks':1})
 assert 0<len(events)<256
 # MSX PSG clock is half the 3.579545 MHz master clock; tone divider is 16.
 def period(note):
@@ -24,6 +43,6 @@ for event in events:
 manifest={'source':score['source'],'source_sha256':score['source_sha256'],'events':len(events),
           'ticks':sum(e['ticks'] for e in events),'tick_rate':50,'seconds':sum(e['ticks'] for e in events)/50,
           'first_lead_period':period(events[0]['lead']),'first_backing_period':period(events[0]['bass']),
-          'first_ticks':events[0]['ticks'],'last_ticks':events[-1]['ticks'],'event_bytes':5}
+          'first_ticks':events[0]['ticks'],'last_ticks':events[-1]['ticks'],'event_bytes':5,'tempo_bpm':score['tempo_bpm'],'measures':score['measures']}
 (OUT/'music_manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 print(f"Music: {len(events)} two-voice events, {manifest['seconds']:.2f}s loop, {len(packed)} bytes")

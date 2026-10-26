@@ -80,6 +80,9 @@ ShowStageCard:
     jr nz,.numbered
     ld de,FinalStageText
     ld bc,090Bh
+    call PutText
+    ld de,FinalStageSubtitle
+    ld bc,0B07h
     jp PutText
 .numbered:
     cp 2
@@ -88,13 +91,10 @@ ShowStageCard:
     ld bc,080Ch
     jp PutText
 .stageNumber:
-    ld de,StageLabel
+    ld de,GarapaStageTitle
     ld bc,090Ch
-    call PutText
-    ld a,(_stage)
-    add a,'0'
-    ld hl,NAMTBL+9*32+17
-    jp WRTVRM
+    jp PutText
+GarapaStageTitle: db "Garapa??",0
 
 CampaignTick:
     ld a,(_state)
@@ -224,6 +224,7 @@ BeginBoss:
     ld (_bossFlash),a
     ld (_caneActive),a
     ld (_secondCheese),a
+    ld (_thirdCheese),a
     ld (_cows),a
     ld (_cows+8),a
     ld (_cows+16),a
@@ -365,6 +366,7 @@ BossTakeHit:
     xor a
     ld (_caneActive),a
     ld (_secondCheese),a
+    ld (_thirdCheese),a
     ld (_hornPhase),a
     ld (_hornClock),a
     ld a,75
@@ -395,6 +397,9 @@ UpdateCane:
     ld a,(_caneActive)
     ld b,a
     ld a,(_secondCheese)
+    or b
+    ld b,a
+    ld a,(_thirdCheese)
     or b
     jr nz,.advance
     ld a,(_throwClock)
@@ -429,6 +434,29 @@ UpdateCane:
     ld (_caneTarget),a
     add a,24
     ld (_secondCheese+3),a
+    ld a,(_bossHP)
+    cp 4
+    ret nc
+    or a
+    ret z
+    ld a,1
+    ld (_thirdCheese),a
+    ld a,(_bossX)
+    ld (_thirdCheese+1),a
+    sub 16
+    ld (_caneX),a
+    add a,32
+    ld (_secondCheese+1),a
+    ; All three launch together. The center one leads by 16 pixels so the
+    ; V9938 never has to draw six cheese layers on the same line as the car.
+    ld a,80
+    ld (_thirdCheese+2),a
+    ld a,(_carX)
+    ld (_thirdCheese+3),a
+    sub 24
+    ld (_caneTarget),a
+    add a,48
+    ld (_secondCheese+3),a
     ret
 .advance:
     ld ix,_caneActive
@@ -437,6 +465,11 @@ UpdateCane:
     cp 4
     ret nz
     ld ix,_secondCheese
+    call MoveBossProjectile
+    ld a,(_state)
+    cp 4
+    ret nz
+    ld ix,_thirdCheese
 MoveBossProjectile:
     ld a,(ix+0)
     or a
@@ -532,6 +565,8 @@ BuildBossSprites:
     ld ix,_caneActive
     call DrawBossProjectile
     ld ix,_secondCheese
+    call DrawBossProjectile
+    ld ix,_thirdCheese
 DrawBossProjectile:
     ld a,(ix+0)
     or a
@@ -553,6 +588,7 @@ BeginEnding:
     ld (_endingClock+1),a
     ld (_caneActive),a
     ld (_secondCheese),a
+    ld (_thirdCheese),a
     ld (_cows),a
     ld (_cows+8),a
     ld (_cows+16),a
@@ -843,6 +879,7 @@ ShowCredits:
 ; Unique tiles per screen cell let text start at any pixel Y in SCREEN 4.
 ; Glyphs retain their original 8px height, with 11px between adjacent baselines.
 InitSpacedText:
+    call DISSCR
     call HideSprites
     ld hl,CHRTBL
     ld bc,6144
@@ -875,7 +912,7 @@ InitSpacedText:
     ld (_creditClock),a
     ld (_creditDest),a
     ld (_creditDest+1),a
-    ret
+    jp ENASCR
 
 CreditsTick:
     call RevealCreditLetter
@@ -1024,6 +1061,7 @@ PrologueSequence:
 
 StageLabel: db "FASE ",0
 FinalStageText: db "FASE FINAL",0
+FinalStageSubtitle: db "O homem do queijo",0
 GrandmaTitle: db "Vov",242,"!!!",0
 MoreCowsText: db "MAIS VACAS NA ESTRADA",0
 GarapaText: db "GAROTO DA GARAPA",0

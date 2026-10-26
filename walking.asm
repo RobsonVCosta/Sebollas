@@ -73,6 +73,8 @@ CheckGarapaContact:
     ret nc
     jp BeginGarapaMeeting
 BeginGarapaMeeting:
+    call EraseDonkeyShots
+    call ResetDonkeyShots
     ld a,11
     ld (_state),a
     ld hl,100
@@ -99,6 +101,7 @@ MeetingTick:
     jp BeginCheeseBonus
 
 BeginCaneChallenge:
+    call ResetDonkeyShots
     ld a,12
     ld (_state),a
     ld hl,0 ; elapsed time controls herd growth; there is no time limit
@@ -173,6 +176,10 @@ CaneChallengeTick:
     or a
     jp nz,.render
     call CheckHits
+    ld a,(_state)
+    cp 12
+    ret nz
+    call UpdateDonkeyShots
     ld a,(_state)
     cp 12
     ret nz
@@ -808,6 +815,7 @@ DrawFriendlyActors:
 
 ; Restore the exact background, including the fishing deck and other actors.
 ErasePlayerCane:
+    call EraseDonkeyShots
     ld hl,(_playerCaneTile)
     ld a,h
     or l
@@ -826,6 +834,9 @@ ErasePlayerCane:
     ret
 
 DrawPlayerCane:
+    call DrawPlayerCaneBody
+    jp DrawDonkeyShots
+DrawPlayerCaneBody:
     ld a,(_playerCane)
     or a
     ret z
@@ -953,6 +964,9 @@ CompositeCaneTile:
     add hl,de
     call RDVRM
     ld c,a
+    ld a,(_compositeTile)
+    cp 250
+    jr nc,.ball
     ld a,(_compositeRow)
     cp 5
     jr z,.unchanged ; joint in the stalk
@@ -976,6 +990,36 @@ CompositeCaneTile:
 .mixed:
     or 018h
     ld (_compositePattern),a
+    jr .unchanged
+.ball:
+    ld a,(_compositeRow)
+    sub 2
+    cp 4
+    jr nc,.unchanged
+    ld b,018h
+    or a
+    jr z,.ballMask
+    cp 3
+    jr z,.ballMask
+    ld b,03Ch
+.ballMask:
+    ld a,(_compositePattern)
+    cp 255
+    jr nz,.ballColor
+    ld a,c
+    rrca
+    rrca
+    rrca
+    rrca
+    ld c,a
+    xor a
+.ballColor:
+    or b
+    ld (_compositePattern),a
+    ld a,c
+    and 15
+    or 010h
+    ld c,a
 .unchanged:
     ld a,c
     ld hl,(_compositeDest)
@@ -995,7 +1039,7 @@ CompositeCaneTile:
     inc (hl)
     ld a,(hl)
     cp 8
-    jr c,.row
+    jp c,.row
     ld hl,(_compositeName)
     ld a,(_compositeTile)
     jp WRTVRM

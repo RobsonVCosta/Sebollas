@@ -27,5 +27,5 @@ after time 6 {
     reg PC 0xCF00
     soundlog start /tmp/sebollas-sultans-msx.wav
 }
-after time 19.5 {soundlog stop; exit}
+after time 29.5 {soundlog stop; exit}
 set power true

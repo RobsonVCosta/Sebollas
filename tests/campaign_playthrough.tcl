@@ -32,6 +32,41 @@ proc avoid_walking_cow {target goal} {
     }
     return [list $target $goal]
 }
+proc avoid_pellets {target goal} {
+    if {[rd 0xC007]} {return [list $target $goal]}
+    set x [rd 0xC004]; set y [rd 0xC005]
+    set shots {}
+    foreach base {0xC380 0xC388 0xC390} {
+        if {![rd $base]} {continue}
+        set den [rd [expr {$base+26}]]
+        if {!$den} {continue}
+        set signs [rd [expr {$base+29}]]
+        set vx [expr {2.0*[rd [expr {$base+24}]]/$den*($signs&1 ? -1 : 1)}]
+        set vy [expr {2.0*[rd [expr {$base+25}]]/$den*($signs&2 ? -1 : 1)}]
+        lappend shots [list [rd [expr {$base+1}]] [rd [expr {$base+2}]] $vx $vy]
+    }
+    if {![llength $shots]} {return [list $target $goal]}
+    set best 1e20; set answer [list $target $goal]
+    foreach pair [list [list $target $goal] [list [rd 0xC08B] $y] [list [rd 0xC08C] $y] [list $x 32] [list $x 160] [list [rd 0xC08B] 32] [list [rd 0xC08B] 160] [list [rd 0xC08C] 32] [list [rd 0xC08C] 160]] {
+        lassign $pair tx ty
+        set px $x; set py $y; set risk 0
+        for {set t 1} {$t<=28} {incr t} {
+            set px [expr {$px+max(-2,min(2,$tx-$px))}]
+            set py [expr {$py+max(-2,min(2,$ty-$py))}]
+            foreach shot $shots {
+                lassign $shot sx sy vx vy
+                set sx [expr {$sx+$vx*$t}]; set sy [expr {$sy+$vy*$t}]
+                if {$px-$sx>=-28 && $px-$sx<=8 && $py-$sy>=-32 && $py-$sy<=4} {incr risk 10000}
+            }
+            foreach base {0xC020 0xC028 0xC030} {
+                if {[rd $base] && abs($px-[rd [expr {$base+1}]])<24 && $py-[rd [expr {$base+2}]]>=-20 && $py-[rd [expr {$base+2}]]<=10} {incr risk 3000}
+            }
+        }
+        set risk [expr {$risk+abs($px-$target)+abs($py-$goal)}]
+        if {$risk<$best} {set best $risk; set answer $pair}
+    }
+    return $answer
+}
 set garapa_hits 0; set garapa_previous_hp 12
 set herd {}; set visited {}; set stops {}; set intros [dict create 0 0 1 0 2 0 3 0]
 set meetings {}; set bonus {}; set bonus_previous {}; set converted 0; set bonus_errors 0
@@ -96,6 +131,7 @@ proc campaign_drive {} {
             }
         }
         if {$row==0} {set target 120; set goal [expr {$stage==0 ? 96 : 80}]}
+        if {$stage<2} {lassign [avoid_pellets $target $goal] target goal}
         steer $target $goal
     } elseif {$state==12} {
         incr ::challenge_ticks

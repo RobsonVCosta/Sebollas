@@ -131,7 +131,10 @@ _compositeSource equ 0C0DBh
 _compositeDest equ 0C0DDh
 _compositeRow equ 0C0DFh
 _compositePattern equ 0C0E0h
+_thirdCheese equ 0C0E1h ; active,x,y,target; enabled at 3 boss HP or less
 _satBuffer      equ 0C100h ; 128 bytes
 _colorBuffer    equ 0C180h ; 512 bytes
 _screenBuffer   equ 0C400h ; 768 bytes
 RAM_END         equ 0C700h
+_donkeyShots equ 0C380h ; three 8-byte records: active,x,y,facing,clock,tileAddr(2),under
+; C398..C3AF: matching 8-byte aim records: abs dx,abs dy,denominator,error x,error y,signs,pad,pad

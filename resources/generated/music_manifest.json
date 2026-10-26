@@ -1,13 +1,15 @@
 {
-  "source": "sultans-reference.ogg",
-  "source_sha256": "eb2dfd2bb2c5bcc422d32648edd27e823fa2b1cfb6c91b618ca81e74fc2b9aeb",
-  "events": 121,
-  "ticks": 638,
+  "source": "sultans-sheet-reference.png",
+  "source_sha256": "81cc53b21e2cd792ed17f6a110ac2e54162ff2d3293bac38db7e4eb6950aeaf7",
+  "events": 189,
+  "ticks": 1135,
   "tick_rate": 50,
-  "seconds": 12.76,
-  "first_lead_period": 320,
-  "first_backing_period": 508,
-  "first_ticks": 16,
-  "last_ticks": 3,
-  "event_bytes": 5
+  "seconds": 22.7,
+  "first_lead_period": 0,
+  "first_backing_period": 1524,
+  "first_ticks": 19,
+  "last_ticks": 1,
+  "event_bytes": 5,
+  "tempo_bpm": 148,
+  "measures": 14
 }

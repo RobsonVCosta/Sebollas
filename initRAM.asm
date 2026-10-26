@@ -10,9 +10,10 @@ InitVarsAtRAM:
     ret
 
 ResetGame:
+    call InitSound
     ld a,5
     ld (_lives),a
-    call SetupGameVideo
+    call SetupGameVideoHidden
     xor a
     ld (_cheeseCount),a
     ld (_caneTotal),a
@@ -46,6 +47,7 @@ ContinueGame:
     jp ShowStageCard
 
 BeginStage:
+    call ResetDonkeyShots
     ld a,1
     ld (_continueAvailable),a
     ld a,(_stage)
@@ -82,6 +84,7 @@ BeginStage:
     ld (_driveArmed),a
     ld (_caneActive),a
     ld (_secondCheese),a
+    ld (_thirdCheese),a
     ld (_cowSerial),a
     ld (_effectTime),a
     ld (_effectTime+1),a
