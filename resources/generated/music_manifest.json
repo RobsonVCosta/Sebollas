@@ -1,0 +1,13 @@
+{
+  "source": "sultans-reference.ogg",
+  "source_sha256": "eb2dfd2bb2c5bcc422d32648edd27e823fa2b1cfb6c91b618ca81e74fc2b9aeb",
+  "events": 121,
+  "ticks": 638,
+  "tick_rate": 50,
+  "seconds": 12.76,
+  "first_lead_period": 320,
+  "first_backing_period": 508,
+  "first_ticks": 16,
+  "last_ticks": 3,
+  "event_bytes": 5
+}

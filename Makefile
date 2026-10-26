@@ -1,7 +1,7 @@
 SJASMPLUS ?= sjasmplus
 PYTHON ?= python3
 
-.PHONY: all assets previews test test-emulator captures
+.PHONY: all assets music previews test test-emulator captures
 all:
 	$(SJASMPLUS) --sym=resources/generated/sebollas.sym Sebollas.asm
 
@@ -9,6 +9,10 @@ assets:
 	$(PYTHON) tools/build_assets.py
 	$(PYTHON) tools/build_title.py
 	$(PYTHON) tools/build_ending.py
+	$(PYTHON) tools/build_music.py
+
+music:
+	$(PYTHON) tools/build_music.py
 
 previews:
 	$(PYTHON) tools/render_previews.py

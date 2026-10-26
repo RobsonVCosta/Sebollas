@@ -1,6 +1,5 @@
-; Original, light country-style chiptune, on PSG channel C at volume 9/15.
-; Foreground effects own their channels; the tune pauses for the horn/refilling
-; and resumes its current note once channel C is free again.
+; Two-voice PSG reduction of the user-supplied Sultans of Swing excerpt.
+; C carries the melody. A supplies backing only while no foreground effect owns it.
 UpdateMusic:
     ld a,(_state)
     cp 8
@@ -20,16 +19,36 @@ UpdateMusic:
 .active:
     ld a,(_effectTime+2)
     or a
-    ret nz ; never replace a crash or the low-fuel alert
+    ret nz ; crash and low-fuel warning own channel C
+    ld b,0
     ld a,(_state)
     cp 4
-    jr z,.musicClock ; battle theme keeps channel C while the horn uses A/B
+    jr z,.battleMode
+    cp 12
+    jr nz,.mode
+.battleMode:
+    inc b
+.mode:
+    ld a,(_musicMode)
+    cp b
+    jr z,.sameMode
+    ld a,b
+    ld (_musicMode),a
+    xor a
+    ld (_musicStep),a
+    ld (_musicClock),a
+    ld (_musicBackingPeriod),a
+    ld (_musicBackingPeriod+1),a
+.sameMode:
+    ld a,(_state)
+    cp 4
+    jr z,.musicClock
     ld a,(_hornPhase)
     or a
-    jr nz,.duck
+    jp nz,.duck
     ld a,(_refueling)
     or a
-    jr nz,.duck
+    jp nz,.duck
 .musicClock:
     ld a,(_musicClock)
     or a
@@ -43,17 +62,37 @@ UpdateMusic:
     ld d,0
     ld l,e
     ld h,d
+    ld a,(_musicMode)
+    or a
+    jr nz,.battleNote
+    ; Normal events: melody period, backing period, duration (five bytes).
+    add hl,hl
     add hl,hl
     add hl,de
     ld de,MusicNotes
-    ld a,(_state)
-    cp 4
-    jr z,.battle
-    cp 12
-    jr nz,.score
-.battle:
+    add hl,de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    ld (_musicPeriod),de
+    inc hl
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    ld (_musicBackingPeriod),de
+    inc hl
+    ld a,(hl)
+    ld (_musicClock),a
+    ld a,(_musicStep)
+    inc a
+    cp MUSIC_NOTE_COUNT
+    jr c,.saveStep
+    xor a
+    jr .saveStep
+.battleNote:
+    add hl,hl
+    add hl,de
     ld de,BattleMusicNotes
-.score:
     add hl,de
     ld e,(hl)
     inc hl
@@ -65,26 +104,64 @@ UpdateMusic:
     ld a,(_musicStep)
     inc a
     and 31
+.saveStep:
     ld (_musicStep),a
 .play:
     ld hl,(_musicPeriod)
     ld a,h
     or l
-    jr z,.duck ; a zero period in the score is a rest
+    jr z,.duck
     ld a,4
     ld e,l
     call Psg_write
     ld a,5
     ld e,h
     call Psg_write
+    ld a,(_musicMode)
+    or a
+    jr z,.volume
     ld a,(_musicClock)
     cp 3
-    jr c,.duck ; small gaps articulate each note
+    jr c,.duck ; battle theme keeps its original articulated arpeggios
+.volume:
     ld a,10
     ld e,9
-    jp Psg_write
+    call Psg_write
+    jp UpdateMusicBacking
 .duck:
     ld a,10
+    ld e,0
+    call Psg_write
+    jp UpdateMusicBacking
+
+UpdateMusicBacking:
+    ld a,(_hornPhase)
+    or a
+    ret nz
+    ld a,(_effectTime)
+    or a
+    ret nz ; never replace the horn, bonus or typewriter on A
+    ld a,(_musicMode)
+    or a
+    jr nz,.mute
+    ld a,(_refueling)
+    or a
+    jr nz,.mute
+    ld hl,(_musicBackingPeriod)
+    ld a,h
+    or l
+    jr z,.mute
+    xor a
+    ld e,l
+    call Psg_write
+    ld a,1
+    ld e,h
+    call Psg_write
+    ld a,8
+    ld e,6
+    jp Psg_write
+.mute:
+    ld a,8
     ld e,0
     jp Psg_write
 
@@ -94,6 +171,19 @@ StopMusic:
     ld (_musicClock),a
     ld (_musicPeriod),a
     ld (_musicPeriod+1),a
+    ld (_musicBackingPeriod),a
+    ld (_musicBackingPeriod+1),a
+    ld (_musicMode),a
+    ld a,(_hornPhase)
+    or a
+    jr nz,.lead
+    ld a,(_effectTime)
+    or a
+    jr nz,.lead
+    ld a,8
+    ld e,0
+    call Psg_write
+.lead:
     ld a,(_effectTime+2)
     or a
     ret nz
@@ -101,73 +191,7 @@ StopMusic:
     ld e,0
     jp Psg_write
 
-; AY tone periods; timing uses the game's normalized 50Hz clock.
-; 32 events, looping in C major, with short notes and a relaxed final cadence.
-MusicNotes:
-    dw 170 ; E5
-    db 12
-    dw 214 ; C5
-    db 6
-    dw 285 ; G4
-    db 6
-    dw 214 ; C5
-    db 12
-    dw 170 ; E5
-    db 12
-    dw 143 ; G5
-    db 18
-    dw 170 ; E5
-    db 6
-    dw 190 ; D5
-    db 12
-    dw 214 ; C5
-    db 18
-    dw 0
-    db 6
-    dw 285 ; G4
-    db 12
-    dw 170 ; E5
-    db 12
-    dw 190 ; D5
-    db 6
-    dw 214 ; C5
-    db 6
-    dw 190 ; D5
-    db 12
-    dw 170 ; E5
-    db 12
-    dw 160 ; F5
-    db 12
-    dw 127 ; A5
-    db 6
-    dw 160 ; F5
-    db 6
-    dw 170 ; E5
-    db 12
-    dw 190 ; D5
-    db 12
-    dw 143 ; G5
-    db 18
-    dw 170 ; E5
-    db 6
-    dw 190 ; D5
-    db 12
-    dw 214 ; C5
-    db 12
-    dw 285 ; G4
-    db 12
-    dw 214 ; C5
-    db 12
-    dw 170 ; E5
-    db 12
-    dw 190 ; D5
-    db 12
-    dw 226 ; B4
-    db 12
-    dw 214 ; C5
-    db 24
-    dw 0
-    db 12
+    include "resources/generated/sultans.inc"
 
 ; Fast C-minor arpeggios replace the road melody during enemy encounters.
 BattleMusicNotes:

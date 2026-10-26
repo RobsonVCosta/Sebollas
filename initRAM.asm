@@ -74,6 +74,10 @@ BeginStage:
     ld (_musicPeriod),a
     ld (_musicPeriod+1),a
     ld (_cheese),a
+    ld (_playerCane),a
+    ld (_playerCaneClock),a
+    ld (_playerCaneTile),a
+    ld (_playerCaneTile+1),a
     ld (_driveStarted),a
     ld (_driveArmed),a
     ld (_caneActive),a

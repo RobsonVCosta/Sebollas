@@ -1,0 +1,614 @@
+{
+  "source": "sultans-reference.ogg",
+  "tick_rate": 50,
+  "method": "harmonic spectrum tracking with temporal continuity; two-voice PSG reduction",
+  "events": [
+    {
+      "lead": 65,
+      "bass": 57,
+      "ticks": 16
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 67,
+      "bass": 57,
+      "ticks": 4
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 76,
+      "bass": 57,
+      "ticks": 14
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 69,
+      "bass": 57,
+      "ticks": 5
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 10
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 69,
+      "bass": 57,
+      "ticks": 3
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 5
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 69,
+      "bass": 57,
+      "ticks": 14
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 76,
+      "bass": 57,
+      "ticks": 11
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 15
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 76,
+      "bass": 57,
+      "ticks": 4
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 7
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 76,
+      "bass": 57,
+      "ticks": 11
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 3
+    },
+    {
+      "lead": 69,
+      "bass": 57,
+      "ticks": 9
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 3
+    },
+    {
+      "lead": 74,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 55,
+      "ticks": 3
+    },
+    {
+      "lead": 0,
+      "bass": 55,
+      "ticks": 1
+    },
+    {
+      "lead": 72,
+      "bass": 55,
+      "ticks": 3
+    },
+    {
+      "lead": 74,
+      "bass": 55,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 76,
+      "bass": 57,
+      "ticks": 6
+    },
+    {
+      "lead": 0,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 55,
+      "ticks": 5
+    },
+    {
+      "lead": 0,
+      "bass": 55,
+      "ticks": 1
+    },
+    {
+      "lead": 72,
+      "bass": 55,
+      "ticks": 4
+    },
+    {
+      "lead": 72,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 52
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 69,
+      "bass": 57,
+      "ticks": 7
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 18
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 76,
+      "bass": 57,
+      "ticks": 9
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 72,
+      "bass": 57,
+      "ticks": 5
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 69,
+      "bass": 57,
+      "ticks": 12
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 5
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 69,
+      "bass": 57,
+      "ticks": 4
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 12
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 69,
+      "bass": 57,
+      "ticks": 6
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 55,
+      "ticks": 4
+    },
+    {
+      "lead": 0,
+      "bass": 55,
+      "ticks": 1
+    },
+    {
+      "lead": 67,
+      "bass": 55,
+      "ticks": 1
+    },
+    {
+      "lead": 67,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 67,
+      "bass": 57,
+      "ticks": 2
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 76,
+      "bass": 57,
+      "ticks": 8
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 50,
+      "ticks": 9
+    },
+    {
+      "lead": 74,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 14
+    },
+    {
+      "lead": 74,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 50,
+      "ticks": 4
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 28
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 69,
+      "bass": 57,
+      "ticks": 4
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 76,
+      "bass": 57,
+      "ticks": 6
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 77,
+      "bass": 57,
+      "ticks": 4
+    },
+    {
+      "lead": 65,
+      "bass": 57,
+      "ticks": 11
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 77,
+      "bass": 57,
+      "ticks": 4
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 39
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 81,
+      "bass": 57,
+      "ticks": 11
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 72,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 72,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 72,
+      "bass": 53,
+      "ticks": 6
+    },
+    {
+      "lead": 72,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 72,
+      "bass": 55,
+      "ticks": 6
+    },
+    {
+      "lead": 0,
+      "bass": 55,
+      "ticks": 1
+    },
+    {
+      "lead": 69,
+      "bass": 55,
+      "ticks": 1
+    },
+    {
+      "lead": 69,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 69,
+      "bass": 57,
+      "ticks": 27
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 5
+    },
+    {
+      "lead": 74,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 45,
+      "ticks": 6
+    },
+    {
+      "lead": 74,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 10
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 76,
+      "bass": 57,
+      "ticks": 10
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 77,
+      "bass": 57,
+      "ticks": 7
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 76,
+      "bass": 57,
+      "ticks": 11
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 37
+    },
+    {
+      "lead": 0,
+      "bass": 57,
+      "ticks": 1
+    },
+    {
+      "lead": 72,
+      "bass": 57,
+      "ticks": 3
+    },
+    {
+      "lead": 74,
+      "bass": 57,
+      "ticks": 3
+    },
+    {
+      "lead": 74,
+      "bass": 0,
+      "ticks": 1
+    },
+    {
+      "lead": 74,
+      "bass": 55,
+      "ticks": 9
+    },
+    {
+      "lead": 0,
+      "bass": 0,
+      "ticks": 3
+    }
+  ],
+  "source_sha256": "eb2dfd2bb2c5bcc422d32648edd27e823fa2b1cfb6c91b618ca81e74fc2b9aeb",
+  "description": "Two-voice chiptune reduction of the user-supplied 12.747755-second excerpt; cleaned opening transient and one brief pitch-tracking artifact."
+}

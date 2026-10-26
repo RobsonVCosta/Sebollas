@@ -95,6 +95,9 @@ UpdateJourney:
     ret nz
 .terrain:
     call ClampCarToRoad
+    ld a,(_stage)
+    or a
+    jp z,CheckGarapaContact
     call CarTerrain
     cp 130
     jr z,.arrival

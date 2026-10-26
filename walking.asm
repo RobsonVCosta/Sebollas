@@ -1,4 +1,4 @@
-; Walking prologue and cane collection. Stages 0/1 have no horn or car.
+; Walking prologue and garapa fight. Stages 0/1 have no horn or car.
 LoadWalkingArt:
     ld a,(_stage)
     cp 2
@@ -12,7 +12,11 @@ LoadWalkingArt:
     ld hl,DonkeyPatterns
     ld de,SPTPAT+COW_PATTERN*8
     ld bc,512
-    jp LDIRVM
+    call LDIRVM
+    ld a,(_stage)
+    or a
+    ret nz
+    jp PlacePeacefulGarapa
 
 DrawWalkingPlayer:
     ld a,(_carX)
@@ -49,24 +53,7 @@ RoadGarapaPosition:
     scf
     ret
 DrawRoadGarapa:
-    ld a,(_stage)
-    or a
-    ret nz
-    ld a,(_state)
-    cp 1
-    jr z,.draw
-    cp 11
-    ret nz
-.draw:
-    call RoadGarapaPosition
-    ret nc
-    ld a,(_bossX)
-    ld (_bossSprite+1),a
-    ld a,(_roadGarapaY)
-    ld (_bossSprite+2),a
-    ld ix,_bossSprite
-    ld a,BOSS_PATTERN/4
-    jp DrawLargeSprite
+    ret ; the peaceful boy is part of the scrolling map
 CheckGarapaContact:
     call RoadGarapaPosition
     ret nc
@@ -124,13 +111,19 @@ BeginCaneChallenge:
     ld (_cows+8),a
     ld (_cows+16),a
     ld (_bossFlash),a
-    ld (_bossHP),a
+    ld (_bossDefeat),a
+    ld (_playerCane),a
+    ld (_playerCaneTile),a
+    ld (_playerCaneTile+1),a
+    ld (_playerCaneClock),a
     ld (_bossDirection),a
     ld (_driveStarted),a
     ld (_garapaTileAddr),a
     ld (_garapaTileAddr+1),a
     ld (_caneTileAddr),a
     ld (_caneTileAddr+1),a
+    ld a,12
+    ld (_bossHP),a
     ld a,1
     ld (_herdLevel),a
     ld a,20
@@ -160,14 +153,11 @@ CaneChallengeTick:
     call BuildBossSprites
     jp UploadSprites
 .started:
-    ld a,(_caneTotal)
-    cp 30
-    jr c,.playing
-    ld hl,(_stageTimer)
-    dec hl
-    ld (_stageTimer),hl
-    ld a,h
-    or l
+    ld a,(_bossDefeat)
+    or a
+    jr z,.playing
+    ld hl,_bossFlash
+    dec (hl)
     jp z,BeginCheeseBonus
     call BuildBossSprites
     jp UploadSprites
@@ -178,14 +168,24 @@ CaneChallengeTick:
     cp 12
     ret nz
     call UpdateWalkingCows
+    call UpdatePlayerCane
+    ld a,(_bossDefeat)
+    or a
+    jp nz,.render
     call CheckHits
     ld a,(_state)
     cp 12
     ret nz
     call UpdateFriendlyCane
-    ld a,(_caneTotal)
-    cp 30
-    jr nc,.render
+    ld a,(_state)
+    cp 12
+    ret nz
+    ld a,(_bossFlash)
+    or a
+    jr z,.moveBoss
+    dec a
+    ld (_bossFlash),a
+.moveBoss:
     ld a,(_tick)
     and 3
     jr nz,.timer
@@ -260,24 +260,11 @@ UpdateFriendlyCane:
     add a,4
     cp 36
     ret nc
-    ld a,(_caneTotal)
-    cp 30
-    jr nc,.remove
-    inc a
-    ld (_caneTotal),a
-    push af
-    ld a,(_cheeseCount)
-    add a,1
-    daa
-    ld (_cheeseCount),a
-    pop af
-    cp 30
-    jr nz,.sound
-    ld hl,50
-    ld (_stageTimer),hl
-.sound:
-    call SoundCollect
-    call DrawCheeseHUD
+    call .remove
+    ld a,(_invulnerable)
+    or a
+    ret nz
+    jp LoseLife
 .remove:
     xor a
     ld (_caneActive),a
@@ -286,10 +273,19 @@ UpdateFriendlyCane:
     ret
 
 DrawCaneObjective:
-    ld de,CaneGoalLabel
-    ld bc,0115h
+    ld hl,NAMTBL+32+22
+    ld bc,10
+    ld a,32
+    jp FILVRM
+
+DrawGarapaPhrase:
+    ld de,GarapaQuestion
+    ld bc,0306h
     call PutText
-    ld a,(_caneTotal)
+    ld de,GarapaHPLabel
+    ld bc,0011h
+    call PutText
+    ld a,(_bossHP)
     ld b,'0'
 .tens:
     cp 10
@@ -300,27 +296,125 @@ DrawCaneObjective:
 .digits:
     push af
     ld a,b
-    ld hl,NAMTBL+32+27
+    ld hl,NAMTBL+24
     call WRTVRM
     pop af
     add a,'0'
-    ld hl,NAMTBL+32+28
+    ld hl,NAMTBL+25
     jp WRTVRM
-CaneGoalLabel: db "CANAS 00/30",0
+GarapaHPLabel: db "GARAPA 00",0
 
-DrawGarapaPhrase:
-    ld a,(_stageTimer)
-    and 128
-    ld de,GarapaQuestion
-    jr z,.show
-    ld de,TakeCaneText
-.show:
-    ld bc,0306h
-    jp PutText
-TakeCaneText: db "Levem cana pra casa",0
+; One upward cane at a time, with a short repeat delay while Space is held.
+; Both projectile types use background tiles, keeping all 32 sprite slots
+; available for the trio and three full-size donkeys.
+UpdatePlayerCane:
+    ld a,(_playerCaneClock)
+    or a
+    jr z,.active
+    dec a
+    ld (_playerCaneClock),a
+.active:
+    ld a,(_playerCane)
+    or a
+    jr nz,.move
+    ld a,(_playerCaneClock)
+    or a
+    ret nz
+    xor a
+    call GTTRIG
+    or a
+    ret z
+    ld a,1
+    ld (_playerCane),a
+    ld a,(_carX)
+    add a,8
+    ld (_playerCaneX),a
+    ld a,(_carY)
+    ld (_playerCaneY),a
+    ld a,18
+    ld (_playerCaneClock),a
+    ret
+.move:
+    ld a,(_playerCaneY)
+    sub 4
+    ld (_playerCaneY),a
+    cp 32
+    jr c,.remove
+    ; Match the visible 20px-wide boy inside his 32px tile canvas.
+    ld b,a
+    ld a,(_state)
+    cp 12
+    jr nz,.donkeys
+    ld a,b
+    cp 72
+    jr nc,.donkeys
+    ld a,(_bossX)
+    ld b,a
+    ld a,(_playerCaneX)
+    sub b
+    cp 24
+    jr nc,.donkeys
+    xor a
+    ld (_playerCane),a
+    ld a,10
+    ld (_bossFlash),a
+    call SoundCollect
+    ld hl,_bossHP
+    ld a,(hl)
+    or a
+    ret z
+    dec (hl)
+    jp nz,DrawHUD
+    ld a,1
+    ld (_bossDefeat),a
+    ld a,75
+    ld (_bossFlash),a
+    xor a
+    ld (_caneActive),a
+    ld (_cows),a
+    ld (_cows+8),a
+    ld (_cows+16),a
+    jp DrawHUD
+.donkeys:
+    ld ix,_cows
+    call .hitDonkey
+    ld ix,_cows+8
+    call .hitDonkey
+    ld ix,_cows+16
+    jp .hitDonkey
+.remove:
+    xor a
+    ld (_playerCane),a
+    ret
+.hitDonkey:
+    ld a,(_playerCane)
+    and (ix+0)
+    ret z
+    ld a,(_playerCaneX)
+    sub (ix+1)
+    add a,8
+    cp 36
+    ret nc
+    ld a,(_playerCaneY)
+    sub (ix+2)
+    add a,12
+    cp 40
+    ret nc
+    xor a
+    ld (_playerCane),a
+    inc (ix+5) ; hits taken, independent for each donkey
+    ld a,(ix+5)
+    cp 3
+    jp c,SoundCow
+    ld (ix+0),0
+    ld (ix+4),100
+    ld a,40
+    ld (_spawnClock),a
+    call AddHundred
+    jp SoundCow
 
 ; A single crossing cow avoids overlapping two 32px cows with the wide trio.
-; Bytes 6/7 mark a chase and its once-only trigger; BIOS time controls expiry.
+; Bytes 6/7 mark a persistent chase; byte 5 counts the three required hits.
 UpdateWalkingCows:
     ld a,(_state)
     cp 12
@@ -337,9 +431,10 @@ UpdateWalkingCows:
     ld a,(_mapRow)
     cp 11
     jr nc,.walking
-    xor a
-    ld (_cows),a
-    ret
+    ld a,(_cows)
+    or a
+    ret z
+    jr .walking
 .walking:
     ld a,(_driveStarted)
     or a
@@ -404,7 +499,7 @@ MoveWalkingCow:
     add a,48
     cp 97
     jp nc,.cross
-    ld (ix+6),250
+    ld (ix+6),1
     ld (ix+7),1
     ld hl,(JIFFY)
     ld de,(_cowTimePtr)
@@ -414,28 +509,6 @@ MoveWalkingCow:
     ld a,h
     ld (de),a
 .chase:
-    ld hl,(_cowTimePtr)
-    ld e,(hl)
-    inc hl
-    ld d,(hl)
-    ld hl,(JIFFY)
-    or a
-    sbc hl,de
-    ld de,250
-    ld a,(_is60Hz)
-    or a
-    jr z,.duration
-    ld de,300
-.duration:
-    or a
-    sbc hl,de
-    jr c,.pursuing
-    ld (ix+6),0
-    jp .cross
-.pursuing:
-    dec (ix+6)
-    jr nz,.chaseMove
-    inc (ix+6) ; BIOS time owns expiry even if the game loop runs faster
 .chaseMove:
     ld a,(_state)
     cp 12
@@ -566,6 +639,7 @@ UpdateCaneHerd:
     ret
 .spawn:
     ld (ix+0),1
+    ld (ix+5),0
     ld (ix+6),0
     ld (ix+7),0
     ld a,(_cowLaneMin)
@@ -646,14 +720,18 @@ LoadGarapaTileArt:
     ret
 
 DrawFriendlyActors:
+    call ErasePlayerCane
     ld hl,(_garapaTileAddr)
     ld a,h
     or l
     call nz,EraseGarapaTiles
-    ld hl,(_caneTileAddr)
-    ld a,h
-    or l
-    call nz,EraseCaneTiles
+    call EraseIncomingCane
+    xor a
+    ld (_garapaTileAddr),a
+    ld (_garapaTileAddr+1),a
+    ld a,(_bossFlash)
+    and 2
+    jr nz,.cane
     ld a,(_bossX)
     srl a
     srl a
@@ -681,12 +759,13 @@ DrawFriendlyActors:
     add hl,bc
     pop bc
     djnz .row
+.cane:
     xor a
     ld (_caneTileAddr),a
     ld (_caneTileAddr+1),a
     ld a,(_caneActive)
     or a
-    ret z
+    jp z,DrawPlayerCane
     ld a,(_caneY)
     srl a
     srl a
@@ -710,13 +789,79 @@ DrawFriendlyActors:
     add hl,de
     ld (_caneTileAddr),hl
     push hl
-    ld a,184
+    call RDVRM
+    ld (_incomingUnder),a
+    pop hl
+    push hl
+    ld a,248
+    call CompositeCaneTile
+    pop hl
+    ld de,32
+    add hl,de
+    push hl
+    call RDVRM
+    ld (_incomingUnder+1),a
+    pop hl
+    ld a,249
+    call CompositeCaneTile
+    jp DrawPlayerCane
+
+; Restore the exact background, including the fishing deck and other actors.
+ErasePlayerCane:
+    ld hl,(_playerCaneTile)
+    ld a,h
+    or l
+    ret z
+    push hl
+    ld a,(_playerCaneUnder)
     call WRTVRM
     pop hl
     ld de,32
     add hl,de
-    ld a,185
-    jp WRTVRM
+    ld a,(_playerCaneUnder+1)
+    call WRTVRM
+    xor a
+    ld (_playerCaneTile),a
+    ld (_playerCaneTile+1),a
+    ret
+
+DrawPlayerCane:
+    ld a,(_playerCane)
+    or a
+    ret z
+    ld a,(_playerCaneY)
+    and 248
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl
+    ld de,NAMTBL
+    add hl,de
+    ld a,(_playerCaneX)
+    add a,4
+    srl a
+    srl a
+    srl a
+    ld e,a
+    ld d,0
+    add hl,de
+    ld (_playerCaneTile),hl
+    push hl
+    call RDVRM
+    ld (_playerCaneUnder),a
+    pop hl
+    push hl
+    ld a,246
+    call CompositeCaneTile
+    pop hl
+    ld de,32
+    add hl,de
+    push hl
+    call RDVRM
+    ld (_playerCaneUnder+1),a
+    pop hl
+    ld a,247
+    jp CompositeCaneTile
 
 EraseGarapaTiles:
     ld b,4
@@ -743,3 +888,170 @@ EraseCaneTiles:
     jp WRTVRM
 GarapaTileMap: db 186,187,188,189,190,191,192,193
     db 194,195,196,197,198,199,200,201
+
+EraseIncomingCane:
+    ld hl,(_caneTileAddr)
+    ld a,h
+    or l
+    ret z
+    push hl
+    ld a,(_incomingUnder)
+    call WRTVRM
+    pop hl
+    ld de,32
+    add hl,de
+    ld a,(_incomingUnder+1)
+    call WRTVRM
+    xor a
+    ld (_caneTileAddr),a
+    ld (_caneTileAddr+1),a
+    ret
+
+; Software transparency: preserve every background pixel outside the cane.
+; Dynamic tiles avoid exceeding the MSX's eight hardware sprites per line.
+; On multicolor rows the cane shares the foreground color; on solid rows
+; it uses cream, retaining the exact original background color.
+CompositeCaneTile:
+    ld (_compositeTile),a
+    ld (_compositeName),hl
+    push hl
+    call RDVRM
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    ex de,hl
+    pop hl
+    ld a,h
+    sub 018h
+    add a,a
+    add a,a
+    add a,a
+    ld b,a
+    add a,d
+    ld d,a
+    ld (_compositeSource),de
+    ld a,(_compositeTile)
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    ld a,h
+    add a,b
+    ld h,a
+    ld (_compositeDest),hl
+    xor a
+    ld (_compositeRow),a
+.row:
+    ld hl,(_compositeSource)
+    call RDVRM
+    ld (_compositePattern),a
+    ld hl,(_compositeSource)
+    ld de,02000h
+    add hl,de
+    call RDVRM
+    ld c,a
+    ld a,(_compositeRow)
+    cp 5
+    jr z,.unchanged ; joint in the stalk
+    ld a,(_compositePattern)
+    or a
+    jr z,.solid
+    cp 255
+    jr nz,.mixed
+    ld a,c
+    rrca
+    rrca
+    rrca
+    rrca
+    ld c,a
+.solid:
+    ld a,c
+    and 15
+    or 0B0h
+    ld c,a
+    xor a
+.mixed:
+    or 018h
+    ld (_compositePattern),a
+.unchanged:
+    ld a,c
+    ld hl,(_compositeDest)
+    ld de,02000h
+    add hl,de
+    call WRTVRM
+    ld hl,(_compositeDest)
+    ld a,(_compositePattern)
+    call WRTVRM
+    ld hl,(_compositeSource)
+    inc hl
+    ld (_compositeSource),hl
+    ld hl,(_compositeDest)
+    inc hl
+    ld (_compositeDest),hl
+    ld hl,_compositeRow
+    inc (hl)
+    ld a,(hl)
+    cp 8
+    jr c,.row
+    ld hl,(_compositeName)
+    ld a,(_compositeTile)
+    jp WRTVRM
+
+; The persistent donkey may overlap the peaceful boy and the trio. Draw the
+; boy in map tiles to keep all three visible without hardware sprite overflow.
+PlacePeacefulGarapa:
+    ld de,202*8
+    ld b,3
+.patterns:
+    push bc
+    push de
+    ld hl,GarapaTilePatterns
+    ld bc,128
+    call LDIRVM
+    pop hl
+    ld de,2048
+    add hl,de
+    ex de,hl
+    pop bc
+    djnz .patterns
+    ld de,02000h+202*8
+    ld b,3
+.colors:
+    push bc
+    push de
+    ld hl,GarapaTileColors
+    ld bc,128
+    call LDIRVM
+    pop hl
+    ld de,2048
+    add hl,de
+    ex de,hl
+    pop bc
+    djnz .colors
+    ld a,12
+    call RoadCenter
+    sub 8
+    srl a
+    srl a
+    srl a
+    ld e,a
+    ld d,0
+    ld hl,WorldMap+10*32
+    add hl,de
+    ld a,202
+    ld b,4
+.row:
+    ld c,4
+.col:
+    ld (hl),a
+    inc a
+    inc hl
+    dec c
+    jr nz,.col
+    ld de,28
+    add hl,de
+    djnz .row
+    ret

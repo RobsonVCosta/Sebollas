@@ -85,7 +85,7 @@ const rom = fs.readFileSync(path.join(root, 'Sebollas.rom'));
             for (const key of ['ArrowLeft','ArrowUp','ArrowRight','ArrowDown','ArrowLeft','ArrowUp','ArrowRight','ArrowDown']) {
                 await page.keyboard.down(key); await frames(40); await page.keyboard.up(key);
             }
-            assert.equal(await read(0xC026), 0, 'cow gives up after five seconds');
+            assert.ok(await read(0xC026) > 0, 'donkey keeps pursuing after five seconds');
             const deckCheckpoint = {[0xC000]: 1, [0xC006]: 5, [0xC007]: 0, [0xC061]: 1, [0xC020]: 0, [0xC018]: 255, [0xC017]: 70, [0xC004]: 168,
                 [0xC005]: 128, [0xC04E]: 40, [0xC016]: 7};
             await write(deckCheckpoint); await frames(3);
@@ -109,13 +109,15 @@ const rom = fs.readFileSync(path.join(root, 'Sebollas.rom'));
             await wait(async () => await read(0xC017) === 1);
             assert.equal(await read(0xC000), 1, 'road keeps scrolling at the bottom');
             await wait(async () => await read(0xC000) === 12);
-            assert.equal(await read(0xC065), 0, 'no enemy health to attack');
+            await frames(20);
+            assert.equal(await read(0xC065), 12, 'garapa can be neutralized with canes');
             await page.keyboard.down('Space'); await frames(3); await page.keyboard.up('Space');
             assert.equal(await read(0xC059), 0);
             await page.keyboard.down('ArrowDown'); await frames(2); await page.keyboard.up('ArrowDown');
-            await write({[0xC069]: 1, [0xC06A]: 120, [0xC06B]: 126, [0xC004]: 112, [0xC005]: 128, [0xC020]: 0});
+            await write({[0xC069]: 1, [0xC06A]: 120, [0xC06B]: 126, [0xC004]: 112, [0xC005]: 128, [0xC020]: 0, [0xC006]: 5, [0xC007]: 0});
             await frames(5);
-            assert.ok(await read(0xC058) > 0, 'canes are collectible');
+            assert.equal(await read(0xC006), 4, 'enemy cane removes one life');
+            assert.equal(await read(0xC058), 0, 'enemy cane is not a collectible');
             await shot('cane-collection');
             await write({[0xC004]: 216, [0xC005]: 136, [0xC04E]: 30});
             await frames(15);
@@ -125,12 +127,19 @@ const rom = fs.readFileSync(path.join(root, 'Sebollas.rom'));
             assert.equal(await read(0xC0AC), 3, 'herd grows to three cows');
             await shot('cane-three-cows');
             await write({[0xC063]: 128, [0xC064]: 0}); await frames(5);
-            await shot('cane-alternate-phrase');
-            await write({[0xC09A]: 29, [0xC058]: 0x29, [0xC069]: 1, [0xC06A]: 120,
-                [0xC06B]: 126, [0xC004]: 112, [0xC005]: 128, [0xC020]: 0, [0xC028]: 0, [0xC030]: 0});
-            await frames(5);
-            assert.equal(await read(0xC09A), 30, '30th cane completes the objective');
-            await shot('cane-goal-complete');
+            await shot('garapa-question');
+            // Fire using the actual keyboard; a real collision delivers the final hit.
+            await write({[0xC065]: 1, [0xC066]: 120, [0xC067]: 0,
+                [0xC004]: 120, [0xC005]: 80, [0xC020]: 0, [0xC028]: 0, [0xC030]: 0,
+                [0xC024]: 100, [0xC02C]: 100, [0xC034]: 100, [0xC0CE]: 0, [0xC0D3]: 0});
+            await page.keyboard.down('Space');
+            await wait(async () => await read(0xC0CE) === 1);
+            await shot('garapa-player-cane');
+            await wait(async () => await read(0xC090) === 1);
+            await page.keyboard.up('Space');
+            assert.equal(await read(0xC065), 0, 'player cane neutralizes garapa');
+            assert.equal(await read(0xC059), 0, 'throwing does not honk');
+            await shot('garapa-neutralized');
             await wait(async () => await read(0xC000) === 7);
             await intro(2);
             await shot('car-to-bar');
@@ -188,7 +197,7 @@ const rom = fs.readFileSync(path.join(root, 'Sebollas.rom'));
             assert.deepEqual(await memory(0xC008,4), savedScore, 'Continue restores the stage starting score');
             assert.equal(await read(0xC006), 5, 'Continue starts a new attempt with five lives');
             assert.deepEqual(errors, []);
-            console.log(`PASS WebMSX ${machine}: ASCII8, four introductions, walking trio, five lives, chase expiry, hunger/decks, canes, bar, final cheese boss, ending, credits and Continue`);
+            console.log(`PASS WebMSX ${machine}: ASCII8, four introductions, walking trio, five lives, persistent pursuit, hunger/decks, cane combat, bar, final cheese boss, ending, credits and Continue`);
             await page.close();
         }
     } finally {await browser.close();}

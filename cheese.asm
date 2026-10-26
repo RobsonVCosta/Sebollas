@@ -1,5 +1,4 @@
-; One transparent 16x16 sprite rolls toward the car, with two rotation frames.
-; Replaces the visible sound waves, keeping the scanline limit at eight.
+; Transparent cheese placed at fixed locations along the road edges.
 UpdateCheese:
     ld a,(_stage)
     cp 2
@@ -10,25 +9,6 @@ UpdateCheese:
     ld a,(_cheese)
     or a
     jr nz,.active
-    ld a,(_cheeseClock)
-    or a
-    jr z,.spawn
-    dec a
-    ld (_cheeseClock),a
-    ret
-.spawn:
-    ld a,(_mapRow)
-    cp 20
-    ret c
-    add a,2
-    call RoadCenter
-    ld (_cheeseX),a
-    ld a,32
-    ld (_cheeseY),a
-    ld a,1
-    ld (_cheese),a
-    xor a
-    ld (_cheesePhase),a
     ret
 .active:
     ; Collecting is independent of invulnerability and never takes a life.
@@ -38,14 +18,14 @@ UpdateCheese:
     sub b
     add a,12
     cp 25
-    jr nc,.roll
+    ret nc
     ld a,(_carY)
     ld b,a
     ld a,(_cheeseY)
     sub b
     add a,12
     cp 41
-    jr nc,.roll
+    ret nc
     ld a,(_cheeseCount)
     cp 099h
     jr z,.counted
@@ -55,34 +35,55 @@ UpdateCheese:
 .counted:
     call SoundCollect
     jr .remove
-.roll:
-    ld a,(_tick)
-    and 3
-    ret nz
+.remove:
+    xor a
+    ld (_cheese),a
+    ret
+
+; Fixed world objects: only a real map scroll changes their screen Y.
+; Alternate road edges every 32 rows; one sprite preserves the line budget.
+ScrollRoadCheese:
+    ld a,(_stage)
+    cp 2
+    ret c
+    ld a,(_cheese)
+    or a
+    jr z,.spawn
     ld a,(_cheeseY)
     add a,8
     cp 184
     jr nc,.remove
     ld (_cheeseY),a
-    ; Follow the road's bends as the wheel rolls toward the player.
-    sub 16
-    srl a
-    srl a
-    srl a
-    ld b,a
-    ld a,(_mapRow)
-    add a,b
-    call RoadCenter
-    ld (_cheeseX),a
-    ld a,(_cheesePhase)
-    xor 1
-    ld (_cheesePhase),a
     ret
 .remove:
     xor a
     ld (_cheese),a
-    ld a,48
-    ld (_cheeseClock),a
+.spawn:
+    ld a,(_mapRow)
+    cp 20
+    ret c
+    ld b,a
+    and 31
+    cp 8
+    ret nz
+    ld l,b
+    ld h,0
+    add hl,hl
+    ld de,RoadBounds
+    add hl,de
+    ld a,b
+    and 32
+    jr z,.left
+    inc hl
+.left:
+    ld a,(hl)
+    ld (_cheeseX),a
+    ld a,16
+    ld (_cheeseY),a
+    ld a,1
+    ld (_cheese),a
+    xor a
+    ld (_cheesePhase),a
     ret
 
 DrawCheese:

@@ -1,6 +1,6 @@
 # Sebollas
 
-Jogo para MSX2 em Assembly Z80. A aventura começa a pé, com uma pescaria e a coleta de canas, e continua de Fusca até o bar e o confronto com o homem do queijo. Depois da vitória, Argon, Gordinho (Leto) e Robson correm para pegar o ônibus para Nova Iguaçu.
+Jogo para MSX2 em Assembly Z80. A aventura começa a pé, com uma pescaria e o confronto com o garoto da garapa, e continua de Fusca até o bar e o confronto com o homem do queijo. Depois da vitória, Argon, Gordinho (Leto) e Robson correm para pegar o ônibus para Nova Iguaçu.
 
 ## Jogar
 
@@ -15,6 +15,7 @@ openmsx -machine C-BIOS_MSX2 -cart Sebollas.rom -romtype ASCII8
 | Setas | Movem o trio ou o Fusca dentro da área transitável. |
 | Cima/Baixo na abertura | Seleciona Play ou Continue. |
 | Espaço/Enter na abertura | Confirma a opção selecionada. |
+| Espaço nas duas primeiras fases | Lança canas para cima, inclusive durante os percursos. 12 acertos neutralizam o garoto da garapa; cada burro precisa de três acertos. |
 | Espaço nas fases de carro | Buzina; afasta as vacas comuns e atinge o chefe final. |
 | Espaço/Enter em GAME OVER ou nos créditos | Retorna à abertura. Solte antes de iniciar novamente. |
 
@@ -31,23 +32,23 @@ As telas de nome duram dois segundos e são seguidas pela imagem da etapa por ci
 | Etapa | Personagem e objetivo |
 | --- | --- |
 | **Indo pescar** | O trio da referência sai de uma casa sem o nome Vavá. Segue por uma estrada sinuosa com pontes, desvia dos burros e recupera a barra FOME nos decks PESCA. O garoto da garapa entra pelo topo e acompanha o scroll até o ponto de encontro. A etapa termina ao encostar nele; ele não ataca e não aparece um título sobre o encontro. A pista é mais larga nesta etapa. |
-| **Fase 1** | Continua a pé. No encontro com o garoto aparece **“Vocês tomam garapa?”**. Colete **30 canas** enquanto foge dos burros de 32×32, na arena ampliada. A fala alterna com **“Levem cana pra casa”**. A quantidade de burros aumenta de uma para duas após 1000 ticks e para três após 2000 ticks de jogo, sem limite de tempo. As canas são coletáveis e não tiram vida; o trio não causa dano ao garoto. Os decks continuam disponíveis durante o encontro. |
-| **Fase 2** | Usa o Fusca, gasolina e postos. A estrada é sinuosa, com pontes, e termina em um **bar** centralizado, com a pista afunilando até sua entrada, sem passagem pelas laterais. A tela de nome mostra **“Vovó!!!”** e, após duas linhas em branco, **“Buzine para espantar as vacas”**. Há uma pausa de chegada e bônus. Não há luta nessa etapa. |
+| **Fase 1** | Continua a pé. No encontro, o garoto pergunta **“Vocês tomam garapa?”**. Use espaço para lançar canas para cima: 12 acertos neutralizam o garoto, que pisca antes do bônus. Cada burro exige três acertos de cana e vale 100 pontos ao ser eliminado. Há um projétil do jogador por vez; segurar espaço repete os lançamentos. As canas lançadas pelo garoto tiram uma vida ao atingir o trio e respeitam a invulnerabilidade após uma batida; não são itens de coleta. A manada cresce após 1000 e 2000 ticks, até três burros. O deck continua disponível durante a luta. |
+| **Fase 2** | Usa o Fusca, gasolina e postos. A estrada é sinuosa, com pontes, e termina em um **bar** centralizado, com a pista afunilando até sua entrada, sem passagem pelas laterais. A tela de nome mostra **“Vovó!!!”**. Há uma pausa de chegada e bônus. Não há luta nessa etapa. |
 | **Fase final** | Mantém a estrada estreita, mais vacas e o homem do queijo. Ele lança queijos quadrados; desvie e acerte 12 buzinadas. Depois pisca e foge. |
 
-Nas etapas a pé não há buzina. Um burro atravessa a estrada por vez. Quando o grupo chega perto, ele persegue por **cinco segundos medidos pelo relógio do BIOS** (250 VBlanks em 50 Hz ou 300 em 60 Hz), e depois volta a atravessar e desiste; o mesmo burro não reinicia a perseguição. O trio é mais ágil que o burro perseguidor. Durante o desafio das canas, até três burros cruzam faixas separadas, perseguindo o grupo na horizontal por cinco segundos. Nesse desafio, a velocidade horizontal dos burros é de um pixel por tick, o dobro da velocidade da pescaria.
+Nas etapas a pé não há buzina. Um burro atravessa a estrada por vez. Quando o grupo chega perto, ele inicia uma perseguição que continua até ser eliminado ou a etapa terminar. Os acertos de cana são acumulados individualmente por burro e reiniciam quando nasce outro. O trio é mais ágil que o perseguidor. Durante a luta, até três burros cruzam faixas separadas e perseguem na horizontal, a um pixel por tick, o dobro da velocidade da pescaria.
 
 Nas etapas de carro as vacas ficam paradas até ouvir a buzina. Na fase final podem aparecer três simultaneamente, e uma em cada quatro ignora a buzina, deixando uma passagem pela direita.
 
-As barras FOME e GAS têm as laterais fechadas, sem letras E/F. Vão de 0 a 100 e gastam uma unidade a cada 12 ticks, cerca de 24 segundos por barra. Encoste nos decks ou postos para recuperar a barra automaticamente. Os dois pontos da estrada pausam o scroll durante a recuperação. Nos encontros há outro ponto no canto inferior direito, sem pausar o inimigo ou a coleta. A barra vazia encerra a partida; abaixo de 21 unidades há alerta visual e sonoro.
+As barras FOME e GAS têm as laterais fechadas, sem letras E/F. Vão de 0 a 100 e gastam uma unidade a cada 12 ticks, cerca de 24 segundos por barra. Encoste nos decks ou postos para recuperar a barra automaticamente. Os dois pontos da estrada pausam o scroll durante a recuperação. Nos encontros há outro ponto no canto inferior direito, sem pausar o combate. A barra vazia encerra a partida; abaixo de 21 unidades há alerta visual e sonoro.
 
-O contador **CANAS** aparece na Fase 1; **QUEIJOS** aparece nas fases de carro, alinhado à direita. O queijo redondo tem uma borda clara, lateral amarela e furos que mudam ao rolar; seus dois tons e o fundo transparente se mantêm nas fases. A tela do bônus diz **“Fase concluída”**, sem numeração. As coletas viram bônus ao fim da etapa: o contador diminui, o placar sobe 100 pontos por item e toca um som. O encontro pacífico da pescaria segue diretamente para a Fase 1.
+As etapas a pé não mostram contador de canas. **QUEIJOS** aparece nas fases de carro, alinhado à direita. O queijo redondo tem uma borda clara, lateral amarela e furos escuros; seus dois tons e o fundo transparente se mantêm nas fases. Os queijos ficam parados em pontos alternados das laterais da estrada; só descem junto com o cenário, sem rolar, perseguir o carro ou se mover durante o abastecimento. A tela do bônus diz **“Fase concluída”**, sem numeração. As coletas viram bônus ao fim da etapa: o contador diminui, o placar sobe 100 pontos por item e toca um som. O encontro pacífico da pescaria segue diretamente para a Fase 1.
 
 A paisagem usa árvores de copa maior, arbustos, flores, pequenas plantações e vegetação nas margens do rio. A estrada tem pedras cinzentas maiores espalhadas, substituindo as antigas marcas pretas.
 
 ## Som e encerramento
 
-A música de estrada usa o canal C do PSG. Nos encontros com inimigos, muda para arpejos mais rápidos em dó menor. Na luta final ela continua durante a buzina dos canais A/B; alertas de prioridade podem interrompê-la.
+A música de estrada é uma redução chiptune do trecho de 12,75 segundos de *Sultans of Swing* fornecido em `resources/sultans-reference.ogg`. O loop de 12,76 segundos usa C para a melodia e A para um acompanhamento mais grave; os efeitos têm prioridade sobre esse acompanhamento. A partitura editável está em `resources/sultans-score.json`, e `make music` gera os eventos nativos. Nos encontros com inimigos, muda para arpejos mais rápidos em dó menor. Na luta final ela continua durante a buzina dos canais A/B; alertas de prioridade podem interrompê-la.
 
 A buzina foi ajustada a `resources/horn-reference.ogg`: corpo perto de 338 Hz, brilho metálico perto de 3,1 kHz, pequenas variações de altura e entrada/saída suaves. Mantém o “bi” de 120 ms, a pausa de 80 ms e o “biiii” de 640 ms. [Ouvir a saída real do PSG](previews/buzina-msx.ogg), gravada com `tests/capture_horn.tcl`.
 
@@ -68,11 +69,11 @@ make                  # monta a ROM e os símbolos
 make assets           # recria sprites, mapas e imagens de 256 cores
 make previews         # recria prévias estáticas
 make test             # montagem e 16 testes Python
-make test-emulator    # 289 rotinas Z80 e campanha completa em 50/60 Hz
+make test-emulator    # 295 rotinas Z80 e campanha completa em 50/60 Hz
 make captures         # capturas reais do V9938
 ```
 
-O teste de campanha usa somente teclado, sem modificar vida, barra, posição ou resistência do chefe. Confere as quatro etapas, coleta das 30 canas e crescimento da manada, encontros pacíficos na pescaria e no bar, 12 acertos no chefe final, bônus, corrida atrás do ônibus, imagens finais e créditos. Também verifica as quatro introduções de 250 ticks, a área transitável e zero quadros com excesso de sprites. O teste do percurso isola fome e decks das batidas.
+O teste de campanha usa somente teclado, sem modificar vida, barra, posição ou resistência do chefe. Confere as quatro etapas, 12 acertos de cana no garoto da garapa, encontros pacíficos na pescaria e no bar, 12 acertos no chefe final, bônus, corrida atrás do ônibus, imagens finais e créditos. Também verifica as quatro introduções de 250 ticks, a área transitável e zero quadros com excesso de sprites. O teste do percurso isola fome e decks das batidas.
 
 O teste opcional do WebMSX precisa de Node.js 18+, Chrome e `playwright-core`:
 
@@ -81,14 +82,14 @@ npm install --prefix /tmp/sebollas-webmsx-test playwright-core
 NODE_PATH=/tmp/sebollas-webmsx-test/node_modules node tests/webmsx_smoke.cjs
 ```
 
-Use `CHROME_PATH` se o navegador estiver fora de `/usr/bin/google-chrome`. O teste carrega a ROM sem dica de mapper em MSX2+ de 50 e 60 Hz, usa o teclado e pontos de verificação para capturar as quatro etapas, as perseguições, os decks, a coleta, o bar e a luta final. As capturas ficam em `previews/*-webmsx-MSX2P*.png`.
+Use `CHROME_PATH` se o navegador estiver fora de `/usr/bin/google-chrome`. O teste carrega a ROM sem dica de mapper em MSX2+ de 50 e 60 Hz, usa o teclado e pontos de verificação para capturar as quatro etapas, as perseguições, os decks, o combate com canas, o bar e a luta final. As capturas ficam em `previews/*-webmsx-MSX2P*.png`.
 
 ## Organização e limites do MSX2
 
 | Arquivo | Uso |
 | --- | --- |
 | `Sebollas.asm` | Inicialização, loop, movimento, colisões, HUD e composição de sprites. |
-| `walking.asm` | Trio, perseguições, encontro pacífico, coleta de canas e chegada ao bar. |
+| `walking.asm` | Trio, perseguições, encontro pacífico, combate com canas e chegada ao bar. |
 | `campaign.asm`, `bonus.asm` | Transições, chefe final, bônus, ônibus e créditos. |
 | `route.asm` | Mapas, limites transitáveis, FOME/GAS, decks e postos. |
 | `ending_art.asm`, `title.asm` | Abertura e imagens antes das fases e dos créditos. |
@@ -100,7 +101,7 @@ A abertura usa SCREEN 5, 256×212 e 16 cores. O gameplay usa SCREEN 4, 256×192.
 
 O cartucho tem 64 bancos de 8 KiB. Os bancos 0/1 permanecem em 4000–7FFF para código e dados fixos. As janelas 8000–BFFF recebem recursos, imagens ou mapas. Os mapas 0–3 ocupam os bancos 48–51 e são copiados para RAM **D000–E5DF** antes de cada etapa: 5120 bytes de tiles, 160 centros da pista e 320 limites laterais. As variáveis e buffers de sprites usam C000–C6FF. A imagem da pescaria está no banco 56; as outras introduções nos bancos 24/32/40, e as imagens finais nos bancos 8/16.
 
-Há 64 padrões de sprite de 16×16, exatamente 2048 bytes. O trio reutiliza os primeiros oito slots; o Fusca usa seis deles. O homem do queijo e o queijo lançado reutilizam os slots do garoto da garapa e da cana durante a luta final. Duas máscaras por quadrante, com combinação CC, preservam até três cores por linha. No percurso a pé há um burro de 32×32 ativo. Durante a coleta de canas, até três burros do mesmo tamanho usam faixas verticais separadas; o garoto e as canas usam tiles de cenário para reservar os 32 slots ao trio e aos burros. O trio mantém a pose original fixa, sem animação dos pés, nos mesmos oito slots de VRAM. Sua colisão considera a parte inferior do corpo. O jogador pode descer até Y=160, junto à borda inferior. As duas etapas a pé avançam um tile a cada 16 ticks; de carro, a cada oito ticks. As fases de carro mantêm até 32 sprites e oito por linha. Os três corredores da cena do ônibus usam a referência lateral `resources/runners-reference.png`, com o fundo branco removido e dois quadros de passada. O glifo de interrogação é definido em `QuestionMarkGlyph`, em `string.asm`, e gerado no código ASCII 63 dos tiles.
+Há 64 padrões de sprite de 16×16, exatamente 2048 bytes. O trio reutiliza os primeiros oito slots; o Fusca usa seis deles. O homem do queijo e o queijo lançado reutilizam os slots do garoto da garapa e da cana durante a luta final. Duas máscaras por quadrante, com combinação CC, preservam até três cores por linha. No percurso a pé há um burro de 32×32 ativo. Durante o confronto com o garoto da garapa, até três burros do mesmo tamanho usam faixas verticais separadas; o garoto e as canas usam tiles de cenário para reservar os 32 slots ao trio e aos burros. O trio mantém a pose original fixa, sem animação dos pés, nos mesmos oito slots de VRAM. Sua colisão considera a parte inferior do corpo. O jogador pode descer até Y=160, junto à borda inferior. As duas etapas a pé avançam um tile a cada 16 ticks; de carro, a cada oito ticks. As fases de carro mantêm até 32 sprites e oito por linha. Os três corredores da cena do ônibus usam a referência lateral `resources/runners-reference.png`, com o fundo branco removido e dois quadros de passada. O glifo de interrogação é definido em `QuestionMarkGlyph`, em `string.asm`, e gerado no código ASCII 63 dos tiles.
 
 A lógica é normalizada a 50 ticks por segundo; em vídeo de 60 Hz, um de cada seis VBlanks não avança a lógica. Testes de áudio verificam os registradores do PSG e as prioridades; não houve avaliação em hardware físico.
 
@@ -119,3 +120,7 @@ Na estrada que leva ao desafio das canas, o último passo do scroll abre automat
 As pedras usam a opção 2 aprovada, com quatro tamanhos de lascas irregulares. A introdução e os créditos mantêm a fonte de 8 pixels, com três pixels extras entre as linhas (passo de 11 pixels nas linhas consecutivas).
 
 As sombras das pedras usam marrom escuro (RGB de 3 bits: 2, 1, 0), em vez de preto.
+
+A prévia em [previews/sultans-msx.ogg](previews/sultans-msx.ogg) foi gravada do PSG da ROM no openMSX, com o roteiro `tests/capture_music.tcl`.
+
+As canas usam composição de tiles para preservar o cenário fora do desenho, sem fundo opaco e sem exceder oito sprites por linha. O garoto pacífico da pescaria também usa tiles no mapa, permitindo que o burro continue perseguindo até o encontro sem ocultar personagens.

@@ -81,6 +81,7 @@ MainLoop:
     call UploadSprites
     jp MainLoop
 .driving:
+    call ErasePlayerCane
     call MovePlayer
     call UpdateJourney
     ld a,(_state)
@@ -93,6 +94,9 @@ MainLoop:
     jp nz,MainLoop
     call UpdateCheese
     call UpdateCows
+    ld a,(_stage)
+    cp 2
+    call c,UpdatePlayerCane
     call CheckHits
     ld a,(_state)
     cp 1
@@ -481,6 +485,7 @@ UpdateScroll:
     cp 1
     jp z,BeginCaneChallenge
 .moveActors:
+    call ScrollRoadCheese
     ld ix,_cows
     call .moveCow
     ld ix,_cows+8
@@ -952,7 +957,15 @@ BuildSprites:
     call DrawCow
 .items:
     call DrawCheese
-    jp DrawRoadGarapa
+    call DrawRoadGarapa
+    ld a,(_stage)
+    cp 2
+    ret nc
+    ld a,(_state)
+    cp 1
+    ret nz
+    call ErasePlayerCane
+    jp DrawPlayerCane
 DrawCow:
     ld a,(ix+0)
     or a

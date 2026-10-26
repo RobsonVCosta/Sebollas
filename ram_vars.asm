@@ -41,7 +41,7 @@ _cheeseClock    equ 0C057h
 _cheeseCount    equ 0C058h ; packed BCD, 00..99
 _hornPhase      equ 0C059h ; 0 idle, 1 short bi, 2 gap, 3 long biiii
 _hornClock      equ 0C05Ah
-_musicStep      equ 0C05Bh ; next note in the 32-event melody
+_musicStep      equ 0C05Bh ; next event in the road or battle arrangement
 _musicClock     equ 0C05Ch ; ticks remaining in this note
 _musicPeriod    equ 0C05Dh ; current 16-bit PSG period, 0 = rest
 _titleBlink     equ 0C05Fh
@@ -116,6 +116,21 @@ _continueScore equ 0C0C4h ; four BCD bytes at the start of the saved stage
 _textLine       equ 0C0C8h ; three extra pixels added for every subsequent text line
 _textY          equ 0C0C9h ; first pixel row of the current line
 _textDone       equ 0C0CAh
+_musicMode      equ 0C0CBh ; 0 supplied road excerpt, 1 dramatic battle theme
+_musicBackingPeriod equ 0C0CCh ; channel A tone, suppressed by foreground effects
+_playerCane     equ 0C0CEh ; active, x, y; upward projectile in the garapa fight
+_playerCaneX    equ 0C0CFh
+_playerCaneY    equ 0C0D0h
+_playerCaneTile equ 0C0D1h ; previous tile address, zero when not drawn
+_playerCaneClock equ 0C0D3h ; minimum interval between throws
+_playerCaneUnder equ 0C0D4h ; two original background tiles beneath the cane
+_incomingUnder equ 0C0D6h
+_compositeTile equ 0C0D8h
+_compositeName equ 0C0D9h
+_compositeSource equ 0C0DBh
+_compositeDest equ 0C0DDh
+_compositeRow equ 0C0DFh
+_compositePattern equ 0C0E0h
 _satBuffer      equ 0C100h ; 128 bytes
 _colorBuffer    equ 0C180h ; 512 bytes
 _screenBuffer   equ 0C400h ; 768 bytes

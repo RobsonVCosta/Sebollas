@@ -86,9 +86,6 @@ ShowStageCard:
     jr nz,.stageNumber
     ld de,GrandmaTitle
     ld bc,080Ch
-    call PutText
-    ld de,HonkInstruction
-    ld bc,0B02h
     jp PutText
 .stageNumber:
     ld de,StageLabel
@@ -1028,7 +1025,6 @@ PrologueSequence:
 StageLabel: db "FASE ",0
 FinalStageText: db "FASE FINAL",0
 GrandmaTitle: db "Vov",242,"!!!",0
-HonkInstruction: db "Buzine para espantar as vacas",0
 MoreCowsText: db "MAIS VACAS NA ESTRADA",0
 GarapaText: db "GAROTO DA GARAPA",0
 CheeseManText: db "HOMEM DO QUEIJO",0

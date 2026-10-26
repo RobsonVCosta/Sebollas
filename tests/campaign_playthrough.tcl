@@ -32,6 +32,7 @@ proc avoid_walking_cow {target goal} {
     }
     return [list $target $goal]
 }
+set garapa_hits 0; set garapa_previous_hp 12
 set herd {}; set visited {}; set stops {}; set intros [dict create 0 0 1 0 2 0 3 0]
 set meetings {}; set bonus {}; set bonus_previous {}; set converted 0; set bonus_errors 0
 set boss_stations {}; set previous_hp 12; set boss_hits 0; set challenge_ticks 0
@@ -63,7 +64,7 @@ proc campaign_drive {} {
         set width [expr {$stage<2 ? 32 : 16}]
         for {set r [expr {$row+$y/8-2}]} {$r<=$row+($y+31)/8-2} {incr r} {
             for {set col [expr {$x/8}]} {$col<=($x+$width-1)/8} {incr col} {
-                if {[rd [expr {0xD000+$r*32+$col}]] ni {130 131 146 157 159 232 233 234}} {incr ::road_errors}
+                if {[rd [expr {0xD000+$r*32+$col}]] ni {130 131 146 157 159 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 232 233 234}} {incr ::road_errors}
             }
         }
         if {![rd 0xC061]} {keymatrixdown 8 128; return}
@@ -77,6 +78,7 @@ proc campaign_drive {} {
         if {$near_station} {set target 168}
         if {[rd 0xC050]} {dict set ::stops "$stage-[expr {abs($axle-$first_station)<abs($axle-$second_station) ? $first_station : $second_station}]" 1}
         if {$stage<2} {
+            keymatrixdown 8 1
             lassign [avoid_walking_cow $target $goal] target goal
         } else {
             foreach idx {0 1 2} {
@@ -98,8 +100,14 @@ proc campaign_drive {} {
     } elseif {$state==12} {
         incr ::challenge_ticks
         if {![rd 0xC061]} {keymatrixdown 8 64; return}
-        set target [expr {[rd 0xC06A]-8}]; set goal 160
-        if {![rd 0xC069]} {set target [rd 0xC066]}
+        set hp [rd 0xC065]
+        if {$hp<$::garapa_previous_hp} {incr ::garapa_hits [expr {$::garapa_previous_hp-$hp}]}
+        set ::garapa_previous_hp $hp
+        set target [rd 0xC066]; set goal 160
+        if {[rd 0xC069] && [rd 0xC06B]>=100} {
+            if {[rd 0xC06A]<=128} {set target 176} else {set target 64}
+        }
+        keymatrixdown 8 1
         dict set ::herd [rd 0xC0AC] 1
         if {![dict exists $::boss_stations 1] || [rd 0xC04E]<30 || [rd 0xC050]} {
             set target 216; set goal 136
@@ -141,9 +149,9 @@ after time 1200 {
     set state [rd 0xC000]; set hz [expr {[rd 0xC003] ? 60 : 50}]
     set intro_ok true
     foreach stage {0 1 2 3} {if {[dict get $::intros $stage]!=250} {set intro_ok false}}
-    set ok [expr {$::finished && $state==6 && [dict size $::visited]==4 && $::boss_hits==12 && $::challenge_ticks>0 && [rd 0xC09A]==30 && [dict size $::herd]>=2 && [dict exists $::meetings 0] && [dict exists $::meetings 2] && $intro_ok && $::road_errors==0 && $::overflow==0 && [dict size $::bonus]==3 && $::converted>0 && $::bonus_errors==0 && [dict get $::art_ticks 8]==250 && [dict get $::art_ticks 9]==250}]
+    set ok [expr {$::finished && $state==6 && [dict size $::visited]==4 && $::boss_hits==12 && $::challenge_ticks>0 && $::garapa_hits==12 && [dict exists $::meetings 0] && [dict exists $::meetings 2] && $intro_ok && $::road_errors==0 && $::overflow==0 && [dict size $::bonus]==3 && $::converted>0 && $::bonus_errors==0 && [dict get $::art_ticks 8]==250 && [dict get $::art_ticks 9]==250}]
     set f [open "resources/generated/campaign-$hz.txt" w]
-    puts $f "[expr {$ok ? {PASS} : {FAIL}}] campaign: state=$state; stages=[dict size $::visited]; stops=[dict size $::stops]; final boss hits=$::boss_hits; cane ticks=$::challenge_ticks; canes caught=[rd 0xC09A]; herd=$::herd; meetings=$::meetings; intro ticks=$::intros; arena refills=$::boss_stations; road errors=$::road_errors; bonus stages=[dict size $::bonus]; converted=$::converted; bonus errors=$::bonus_errors; max sprites=$::worst; overflow=$::overflow; lives=[rd 0xC006]"
+    puts $f "[expr {$ok ? {PASS} : {FAIL}}] campaign: state=$state; stages=[dict size $::visited]; stops=[dict size $::stops]; final boss hits=$::boss_hits; garapa hits=$::garapa_hits; cane ticks=$::challenge_ticks; canes caught=[rd 0xC09A]; herd=$::herd; meetings=$::meetings; intro ticks=$::intros; arena refills=$::boss_stations; road errors=$::road_errors; bonus stages=[dict size $::bonus]; converted=$::converted; bonus errors=$::bonus_errors; max sprites=$::worst; overflow=$::overflow; lives=[rd 0xC006]"
     close $f; exit
 }
 set power true
