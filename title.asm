@@ -63,7 +63,8 @@ ShowTitleArt:
     jr .control
 .done:
     ei
-    jp ENASCR
+    call ENASCR
+    jp DrawTitleMenu
 
 ; A=0 hides PLAY; nonzero shows it, without touching any of the surrounding art.
 DrawTitlePlay:
@@ -99,3 +100,105 @@ DrawTitlePlay:
     pop bc
     djnz .row
     ret
+
+; Keep both actions readable; only the selected action has a cursor and blinks.
+DrawTitleMenu:
+    ld a,1
+    call DrawTitlePlay
+    ld a,(_continueAvailable)
+    or a
+    ret z
+    call DrawTitleContinue
+    ld de,112*128+76
+    ld a,(_titleSelection)
+    or a
+    jr z,ClearTitleCursor
+    ld de,100*128+76
+ClearTitleCursor:
+    ld b,8
+.row:
+    push bc
+    push de
+    ex de,hl
+    ld bc,3
+    ld a,TITLE_PLAY_BACKGROUND
+    call FILVRM
+    pop hl
+    ld de,128
+    add hl,de
+    ex de,hl
+    pop bc
+    djnz .row
+    ret
+
+DrawTitleContinue:
+    ld (_titleBlink),a
+    ld hl,TitleContinueOn
+    ld de,112*128+76
+    ld b,8
+.row:
+    push bc
+    push hl
+    push de
+    ld a,(_titleBlink)
+    or a
+    jr z,.off
+    ld bc,36
+    call LDIRVM
+    jr .next
+.off:
+    ex de,hl
+    ld bc,36
+    ld a,TITLE_PLAY_BACKGROUND
+    call FILVRM
+.next:
+    pop de
+    pop hl
+    ld bc,36
+    add hl,bc
+    push hl
+    ld hl,128
+    add hl,de
+    ex de,hl
+    pop hl
+    pop bc
+    djnz .row
+    ret
+
+; Direction presses select a row once, until the stick/arrows are released.
+UpdateTitleSelection:
+    ld a,(_continueAvailable)
+    or a
+    ret z
+    xor a
+    call GTSTCK
+    or a
+    jr nz,.direction
+    ld (_menuMoveHeld),a
+    ret
+.direction:
+    ld b,a
+    ld a,(_menuMoveHeld)
+    or a
+    ret nz
+    ld a,b
+    cp 4
+    jr c,.upOrSide
+    cp 7
+    jr c,.down
+    cp 7
+    ret z
+.up:
+    xor a
+    jr .select
+.upOrSide:
+    cp 3
+    ret z
+    jr .up
+.down:
+    ld a,1
+.select:
+    ld (_titleSelection),a
+    ld a,1
+    ld (_menuMoveHeld),a
+    jp DrawTitleMenu

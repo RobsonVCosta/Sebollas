@@ -18,7 +18,7 @@ class Assets(unittest.TestCase):
         self.assertEqual(bytes(rows[147][1:5]),'VAVÁ'.encode('latin-1'))
         self.assertNotIn(b'DESTINO',a.WORLD)
         for y,row in enumerate(rows[7:147],7):
-            self.assertIn(row[a.META["road_centers"][y]//8],(130,131,146,157,159))
+            self.assertIn(row[a.META["road_centers"][y]//8],(130,131,146,157,159,232,233,234))
         self.assertGreaterEqual(max(a.META["road_centers"])-min(a.META["road_centers"]),56)
         for y in (54,110):
             self.assertEqual(bytes(rows[y-3][24:29]),b'POSTO')
@@ -124,6 +124,7 @@ class Assets(unittest.TestCase):
             'Obrigado amigos, pelas boas memórias.',
             'By Robson Velloso'])
         self.assertTrue(all(0<=y<24 and x+len(line)<=32 for y,x,line in credits['rows']))
+        self.assertTrue(all(0<=y<=184 and x+len(line)<=32 for y,x,line in credits['pixel_rows']))
     def test_three_runners_have_distinct_sizes(self):
         bounds={}
         for name in ('runner_small','runner_tall','runner_fat'):
@@ -148,7 +149,7 @@ class Assets(unittest.TestCase):
                 self.assertEqual((left,right),(120,120))
                 self.assertTrue(all(a.WORLD[row*32+col] in range(148,154) for col in (15,16)) if row>=2 else a.WORLD[row*32+15]==ord("R"))
                 continue
-            self.assertTrue(all(a.WORLD[row*32+col] in (130,131,146,157,159)
+            self.assertTrue(all(a.WORLD[row*32+col] in (130,131,146,157,159,232,233,234)
                                 for col in range(left//8,(right+15)//8+1)))
         for row in range(139):
             for y in range(32,161):
@@ -167,8 +168,8 @@ class Assets(unittest.TestCase):
             bundle=(data/f'route{stage}.bin').read_bytes()
             self.assertEqual(len(bundle),5600)
             self.assertEqual(bundle[:5120],world)
-        self.assertEqual(sum(t in (130,131) for t in (data/'world0.bin').read_bytes()[20*32:21*32]),14)
-        self.assertEqual(sum(t in (130,131) for t in (data/'world1.bin').read_bytes()[20*32:21*32]),10)
+        self.assertEqual(sum(t in (130,131,232,233,234) for t in (data/'world0.bin').read_bytes()[20*32:21*32]),14)
+        self.assertEqual(sum(t in (130,131,232,233,234) for t in (data/'world1.bin').read_bytes()[20*32:21*32]),10)
         self.assertEqual(len((data/'donkey_patterns.bin').read_bytes()),512)
         self.assertEqual(len((data/'donkey_colors.bin').read_bytes()),256)
         self.assertTrue(any((data/'patterns.bin').read_bytes()[47*8:48*8]))
@@ -176,6 +177,19 @@ class Assets(unittest.TestCase):
         self.assertEqual(len((data/'trio_colors.bin').read_bytes()),128)
         for stage in range(3):
             self.assertEqual(a.META['palettes'][stage][10],a.META['palettes'][0][10])
+    def test_shorter_fishing_keeps_landmarks(self):
+        import json
+        data=ROOT/'resources/generated'
+        manifest=json.loads((data/'manifest.json').read_text())
+        self.assertEqual(manifest['fishing_start_row'],108)
+        world=(data/'world0.bin').read_bytes()
+        for station in manifest['fishing_stations']:
+            self.assertEqual(world[(station-3)*32+24:(station-3)*32+29],b'PESCA')
+            self.assertIn(159,world[(station-2)*32:(station+8)*32])
+        for lo,hi in manifest['fishing_rivers']:
+            for y in range(lo,hi+1):
+                self.assertIn(146,world[y*32:(y+1)*32])
+        self.assertEqual(world[118*32+1],148)
     def test_cheese_enemy_graphics_fit_shared_vram_slots(self):
         data=ROOT/'resources/generated'
         self.assertEqual(len((data/'cheese_boss_patterns.bin').read_bytes()),256)

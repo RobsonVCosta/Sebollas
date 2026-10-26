@@ -814,17 +814,9 @@ BeginPrologue:
     ld (_effectTime),a
     ld (_effectTime+1),a
     ld (_effectTime+2),a
-    call HideSprites
-    ld hl,NAMTBL
-    ld bc,768
-    ld a,32
-    call FILVRM
+    call InitSpacedText
     ld hl,PrologueSequence
     ld (_creditNext),hl
-    ld hl,0
-    ld (_creditDest),hl
-    xor a
-    ld (_creditClock),a
     ret
 
 PrologueTick:
@@ -837,6 +829,7 @@ PrologueTick:
     ld a,h
     or l
     ret nz
+    call SetupGameVideo ; restore the standard font after the pixel text screen
     jp ShowStageCard
 
 ShowCredits:
@@ -845,17 +838,46 @@ ShowCredits:
     ld (_state),a
     xor a
     ld (_startArmed),a
-    call HideSprites
-    ld hl,NAMTBL
-    ld bc,768
-    ld a,32
-    call FILVRM
+    call InitSpacedText
     ld hl,CreditSequence
     ld (_creditNext),hl
-    ld hl,0
-    ld (_creditDest),hl
+    ret
+
+; Unique tiles per screen cell let text start at any pixel Y in SCREEN 4.
+; Glyphs retain their original 8px height, with 11px between adjacent baselines.
+InitSpacedText:
+    call HideSprites
+    ld hl,CHRTBL
+    ld bc,6144
     xor a
+    call FILVRM
+    ld hl,CLRTBL
+    ld bc,6144
+    ld a,0F1h
+    call FILVRM
+    ld hl,_screenBuffer
+    ld b,3
+.bank:
+    push bc
+    xor a
+.tile:
+    ld (hl),a
+    inc hl
+    inc a
+    jr nz,.tile
+    pop bc
+    djnz .bank
+    ld hl,_screenBuffer
+    ld de,NAMTBL
+    ld bc,768
+    call LDIRVM
+    xor a
+    ld (_textLine),a
+    ld (_textY),a
+    ld (_textDone),a
     ld (_creditClock),a
+    ld (_creditDest),a
+    ld (_creditDest+1),a
     ret
 
 CreditsTick:
@@ -864,6 +886,9 @@ CreditsTick:
 
 ; A character every two game ticks, including the heading and signature.
 RevealCreditLetter:
+    ld a,(_textDone)
+    or a
+    ret nz
     ld a,(_creditClock)
     or a
     jr z,.ready
@@ -880,6 +905,9 @@ RevealCreditLetter:
     ld a,(hl)
     cp 255
     jr nz,.row
+    ld a,1
+    ld (_textDone),a
+    ld (_creditNext),hl
     ld a,(_state)
     cp 13
     ret nz
@@ -889,24 +917,27 @@ RevealCreditLetter:
     ld (_stageTimer),hl
     ret
 .row:
-    ld e,a
-    ld d,0
+    add a,a
+    add a,a
+    add a,a
+    ld b,a
+    ld a,(_textLine)
+    ld c,a
+    add a,a
+    add a,c
+    add a,b
+    ld (_textY),a
+    ld a,(_textLine)
+    inc a
+    ld (_textLine),a
     inc hl
-    ex de,hl
-    add hl,hl
-    add hl,hl
-    add hl,hl
-    add hl,hl
-    add hl,hl
-    ld bc,NAMTBL
-    add hl,bc
-    ex de,hl
-    ld a,(hl)
+    ld c,(hl)
     inc hl
-    add a,e
-    ld e,a
-    jr nc,.letter
-    inc d
+    push hl
+    ld a,(_textY)
+    call TextPatternAddress
+    ex de,hl
+    pop hl
 .letter:
     ld a,(hl)
     inc hl
@@ -916,16 +947,79 @@ RevealCreditLetter:
 .write:
     ld (_creditNext),hl
     push de
-    ex de,hl
-    call WRTVRM
+    call DrawSpacedLetter
     pop hl
-    inc hl
+    ld de,8
+    add hl,de
     ld (_creditDest),hl
     ld a,1
     ld (_creditClock),a
     ld a,(_state)
     cp 13
     jp z,SoundTypewriter
+    ret
+
+; A=pixel Y, C=tile column. Return the first pattern byte in HL.
+TextPatternAddress:
+    ld l,a
+    and 7
+    ld e,a
+    ld d,0
+    ld a,l
+    and 0F8h
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    add hl,de
+    ld a,c
+    add a,a
+    add a,a
+    add a,a
+    ld e,a
+    ld d,0
+    add hl,de
+    ret
+
+; A=character, DE=first VRAM pattern byte. Split across tile rows as needed.
+DrawSpacedLetter:
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    ld bc,TilePatterns
+    add hl,bc
+    ld a,(_textY)
+    and 7
+    ld c,a
+    ld b,8
+.row:
+    ld a,(hl)
+    inc hl
+    push hl
+    push bc
+    push de
+    ex de,hl
+    call WRTVRM
+    pop de
+    pop bc
+    pop hl
+    inc de
+    inc c
+    ld a,c
+    and 7
+    jr nz,.next
+    ld a,e
+    add a,248
+    ld e,a
+    jr nc,.next
+    inc d
+.next:
+    djnz .row
     ret
 
 PrologueSequence:

@@ -12,6 +12,13 @@ proc wr {a v} {debug write memory $a $v}
 proc expect {name actual expected} {
     if {$actual ne $expected} {error "$name: got <$actual>, expected <$expected>"}
 }
+proc expect_glyph {x y code} {
+    for {set row 0} {$row<8} {incr row} {
+        set py [expr {$y+$row}]
+        set addr [expr {($py/8)*256+$x*8+$py%8}]
+        expect glyph_row_$row [debug read VRAM $addr] [rd [expr {$::sym(TilePatterns)+$code*8+$row}]]
+    }
+}
 proc prepare {} {
     keymatrixup 8 255
     keymatrixup 7 255
@@ -21,7 +28,7 @@ proc prepare {} {
     close $f
     debug write memory 0x7000 2
     debug write memory 0x7800 3
-    foreach {a v} {0xC000 1 0xC004 120 0xC005 128 0xC006 5 0xC007 0 0xC015 0 0xC018 64 0xC017 138 0xC04E 100 0xC04F 0 0xC050 0 0xC052 0 0xC053 0 0xC054 0 0xC055 0 0xC056 0 0xC057 48 0xC058 0 0xC01C 0 0xC01D 0 0xC01E 0 0xC059 0 0xC05A 0 0xC05B 0 0xC05C 0 0xC05D 0 0xC05E 0 0xC060 2 0xC061 1 0xC062 1 0xC063 0 0xC064 0 0xC065 12 0xC066 120 0xC067 0 0xC068 24 0xC069 0 0xC06A 0 0xC06B 0 0xC06C 120 0xC06D 0 0xC077 0 0xC078 0 0xC079 0 0xC07A 0 0xC084 0 0xC085 0 0xC086 0 0xC087 0 0xC08F 0 0xC090 0 0xC099 0 0xC09A 0 0xC09E 0 0xC0AC 0 0xC0B6 0 0xC0B7 0 0xC0B8 0 0xC0B9 0 0xC0BA 0 0xC0BB 0 0xC0BC 0 0xC0BD 0 0xC0BE 0 0xC0BF 0} {wr $a $v}
+    foreach {a v} {0xC000 1 0xC004 120 0xC005 128 0xC006 5 0xC007 0 0xC015 0 0xC018 64 0xC017 138 0xC04E 100 0xC04F 0 0xC050 0 0xC052 0 0xC053 0 0xC054 0 0xC055 0 0xC056 0 0xC057 48 0xC058 0 0xC01C 0 0xC01D 0 0xC01E 0 0xC059 0 0xC05A 0 0xC05B 0 0xC05C 0 0xC05D 0 0xC05E 0 0xC060 2 0xC061 1 0xC062 1 0xC063 0 0xC064 0 0xC065 12 0xC066 120 0xC067 0 0xC068 24 0xC069 0 0xC06A 0 0xC06B 0 0xC06C 120 0xC06D 0 0xC077 0 0xC078 0 0xC079 0 0xC07A 0 0xC084 0 0xC085 0 0xC086 0 0xC087 0 0xC08F 0 0xC090 0 0xC099 0 0xC09A 0 0xC09E 0 0xC0AC 0 0xC0B6 0 0xC0B7 0 0xC0B8 0 0xC0B9 0 0xC0BA 0 0xC0BB 0 0xC0BC 0 0xC0BD 0 0xC0BE 0 0xC0BF 0 0xC0C0 0 0xC0C1 0 0xC0C2 0 0xC0C3 0 0xC0C4 0 0xC0C5 0 0xC0C6 0 0xC0C7 0 0xC0C8 0 0xC0C9 0 0xC0CA 0} {wr $a $v}
     for {set a 0xC008} {$a<0xC00C} {incr a} {wr $a 0}
     for {set a 0xC020} {$a<0xC038} {incr a} {wr $a 0}
 }
@@ -184,6 +191,9 @@ case arrival UpdateJourney {wr 0xC017 0; wr 0xC005 80} {
     expect current_stage [rd 0xC060] 2
 }
 case destination_requires_driveway UpdateJourney {wr 0xC017 0} {expect state [rd 0xC000] 1}
+foreach stone {232 233 234} {
+    case arrival_on_stone_$stone UpdateJourney "wr 0xC017 0; wr 0xC005 80; wr [expr {0xD000+11*32+16}] $stone" {expect arrival [rd 0xC000] 11}
+}
 case arrival_to_title MenuTick {wr 0xC000 3; wr 0xC01A 1; keymatrixdown 8 1} {expect state [rd 0xC000] 0}
 case title_art_loaded ShowMenu {} {
     expect black_backdrop [debug read {VDP regs} 7] 0
@@ -199,10 +209,43 @@ case title_play_hidden DrawTitlePlay {reg A 0} {
 case title_play_shown DrawTitlePlay {reg A 1} {
     expect play [debug read_block VRAM [expr {100*128+76}] 20] [debug read_block memory $::sym(TitlePlayOn) 20]
 }
+case continue_hidden_before_first_game ShowMenu {} {
+    expect locked [rd 0xC0C0] 0
+    for {set row 112} {$row<120} {incr row} {
+        expect blank [debug read_block VRAM [expr {$row*128+76}] 36] [string repeat [binary format c $::sym(TITLE_PLAY_BACKGROUND)] 36]
+    }
+}
+case continue_visible_after_playing ShowMenu {wr 0xC0C0 1} {
+    expect play_selected [rd 0xC0C2] 0
+    for {set row 0} {$row<8} {incr row} {
+        expect text [debug read_block VRAM [expr {(112+$row)*128+79}] 33] [debug read_block memory [expr {$::sym(TitleContinueOn)+$row*36+3}] 33]
+    }
+}
+case continue_select_down UpdateTitleSelection {wr 0x7000 4; wr 0x7800 5; wr 0xC0C0 1; keymatrixdown 8 64} {
+    expect continue [rd 0xC0C2] 1; expect held [rd 0xC0C3] 1
+}
+case play_select_up UpdateTitleSelection {wr 0x7000 4; wr 0x7800 5; wr 0xC0C0 1; wr 0xC0C2 1; keymatrixdown 8 32} {expect play [rd 0xC0C2] 0}
+case menu_held_direction_no_repeat UpdateTitleSelection {wr 0xC0C0 1; wr 0xC0C3 1; keymatrixdown 8 64} {expect still_play [rd 0xC0C2] 0}
+case continue_locked_before_play UpdateTitleSelection {keymatrixdown 8 64} {expect play [rd 0xC0C2] 0}
+case stage_saves_continue_checkpoint BeginStage {wr 0xC060 2; wr 0xC00A 18} {
+    expect unlocked [rd 0xC0C0] 1; expect stage [rd 0xC0C1] 2
+    expect score [binary encode hex [debug read_block memory 0xC0C4 4]] 00001200
+}
+case continue_retries_saved_stage MenuTick {
+    wr 0xC000 0; wr 0xC01A 1; wr 0xC0C0 1; wr 0xC0C2 1; wr 0xC0C1 2
+    wr 0xC0C6 18; wr 0xC006 0; wr 0xC058 9; keymatrixdown 7 128
+} {
+    expect card [rd 0xC000] 3; expect stage [rd 0xC060] 2; expect lives [rd 0xC006] 5
+    expect score [bcd] 00001200; expect cheese_reset [rd 0xC058] 0
+}
+case play_still_starts_fresh MenuTick {
+    wr 0xC000 0; wr 0xC01A 1; wr 0xC0C0 1; wr 0xC0C1 3; wr 0xC0C2 0
+    wr 0xC00A 18; keymatrixdown 8 1
+} {expect prologue [rd 0xC000] 13; expect stage [rd 0xC060] 0; expect score [bcd] 00000000}
 case title_to_game ResetGame {} {
     expect mode [rd 0xFCAF] 4
     expect height [expr {[debug read {VDP regs} 9]&128}] 0
-    expect font_bank [debug read_block VRAM 0 2048] [debug read_block memory $::sym(TilePatterns) 2048]
+    expect text_canvas [debug read_block VRAM 0 6144] [string repeat [binary format c 0] 6144]
 }
 case low_fuel_alert UpdateFuelAlert {wr 0xC04E 20} {
     expect duration [rd 0xC01E] 6; expect interval [rd 0xC052] 25
@@ -422,8 +465,7 @@ case second_art_holds EndingArtTick {wr 0xC000 9; wr 0xC063 2; wr 0xC064 0} {
 case chase_to_credits EndingTick {wr 0xC000 5; wr 0xC06E 2; wr 0xC063 1; wr 0xC064 0} {
     expect screen [rd 0xFCAF] 4
     expect credits [rd 0xC000] 6
-    expect blank_heading [debug read_block VRAM [expr {0x1800+32+12}] 8] "        "
-    expect blank_names [debug read_block VRAM [expr {0x1800+5*32+4}] 24] [string repeat " " 24]
+    expect blank_patterns [debug read_block VRAM 0 6144] [string repeat [binary format c 0] 6144]
     expect pointer [expr {[rd 0xC075]+256*[rd 0xC076]}] $::sym(CreditSequence)
 }
 case second_art_then_car EndingArtTick {wr 0xC000 9; wr 0xC063 1; wr 0xC064 0} {
@@ -500,14 +542,14 @@ case warning_alternates UpdateFuelAlert {wr 0xC04E 15; wr 0xC087 1} {
 case warning_preserves_pitch_during_gap UpdateFuelAlert {wr 0xC04E 15; wr 0xC052 10; wr 0xC087 1} {expect pitch [rd 0xC087] 1}
 case prologue_starts_blank BeginPrologue {} {
     expect story [rd 0xC000] 13; expect pending [rd 0xC0BF] 0
-    expect blank [debug read_block VRAM 0x1800 768] [string repeat " " 768]
+    expect blank [debug read_block VRAM 0 6144] [string repeat [binary format c 0] 6144]
 }
 case prologue_types_and_clacks RevealCreditLetter {
     wr 0xC000 13; wr 0xC088 0; wr 0xC089 0; wr 0xC08A 0
     wr 0xC075 [expr {$::sym(PrologueSequence)&255}]; wr 0xC076 [expr {$::sym(PrologueSequence)>>8}]
     debug write_block VRAM 0x18A6 [string repeat " " 19]
 } {
-    expect one_letter [debug read_block VRAM 0x18A6 19] "E                  "
+    expect_glyph 6 40 69
     expect noise_mixer [debug read {PSG regs} 7] 177
     expect clack_volume [debug read {PSG regs} 8] 11; expect short [rd 0xC01C] 1
 }
@@ -534,18 +576,27 @@ case credit_first_character RevealCreditLetter {
     wr 0xC088 0; wr 0xC089 0; wr 0xC08A 0
     debug write_block VRAM 0x182C [string repeat " " 8]
 } {
-    expect first [debug read_block VRAM 0x182C 8] "C       "
+    expect_glyph 12 8 67
     expect delay [rd 0xC08A] 1
 }
+case prologue_second_line_adds_three_pixels RevealCreditLetter {
+    wr 0xC000 13; wr 0xC075 240; wr 0xC076 192
+    wr 0xC088 1; wr 0xC089 5; wr 0xC08A 0; wr 0xC0C8 1
+    foreach {a v} {0xC0F0 0 0xC0F1 6 0xC0F2 2 0xC0F3 65 0xC0F4 0 0xC0F5 255} {wr $a $v}
+} {expect y [rd 0xC0C9] 51; expect_glyph 2 51 65}
+case text_crosses_vertical_bank RevealCreditLetter {
+    wr 0xC075 240; wr 0xC076 192; wr 0xC088 0; wr 0xC089 0; wr 0xC08A 0; wr 0xC0C8 1
+    foreach {a v} {0xC0F0 7 0xC0F1 5 0xC0F2 103 0xC0F3 0 0xC0F4 255} {wr $a $v}
+} {expect y [rd 0xC0C9] 59; expect_glyph 5 59 103}
 case credit_letter_gap RevealCreditLetter {wr 0xC08A 1; wr 0xC075 10; wr 0xC076 192} {
     expect pointer [rd 0xC075] 10; expect delay [rd 0xC08A] 0
 }
 case credit_new_line RevealCreditLetter {
     set addr [expr {$::sym(CreditLines)-1}]
     wr 0xC075 [expr {$addr&255}]; wr 0xC076 [expr {$addr>>8}]
-    wr 0xC088 1; wr 0xC089 24; wr 0xC08A 0
+    wr 0xC088 1; wr 0xC089 24; wr 0xC08A 0; wr 0xC0C8 1
     debug write_block VRAM 0x1885 [string repeat " " 24]
-} {expect first [debug read_block VRAM 0x1885 24] "E                       "}
+} {expect_glyph 5 35 69}
 case boss_left_wall ClampCarToRoad {wr 0xC000 4; wr 0xC004 32} {expect x [rd 0xC004] 64; expect lives [rd 0xC006] 5}
 case boss_right_wall ClampCarToRoad {wr 0xC000 4; wr 0xC004 250} {expect x [rd 0xC004] 240; expect lives [rd 0xC006] 5}
 case no_start_prompt BeginStage {} {
@@ -698,8 +749,8 @@ case cane_uses_tiles_with_full_size_donkey BuildBossSprites {wr 0xC000 12; wr 0x
 case cane_is_visible_with_scanline_space BuildBossSprites {wr 0xC000 12; wr 0xC060 1; cow 112 100; wr 0xC004 112; wr 0xC005 128; wr 0xC069 1; wr 0xC06A 120; wr 0xC06B 96} {expect slots [rd 0xC040] 16}
 case bar_arrival_goes_to_bonus MeetingTick {wr 0xC000 11; wr 0xC060 2; wr 0xC063 1; wr 0xC064 0} {expect bonus [rd 0xC000] 7}
 case fishing_starts_in_unnamed_house LoadStageMap {wr 0xC060 0} {
-    expect house [rd [expr {0xD000+148*32+1}]] 148
-    if {[debug read_block memory [expr {0xD000+147*32+1}] 4] eq "VAV[format %c 193]"} {error "unexpected Vava title"}
+    expect house [rd [expr {0xD000+118*32+1}]] 148
+    if {[debug read_block memory [expr {0xD000+117*32+1}] 4] eq "VAV[format %c 193]"} {error "unexpected Vava title"}
 }
 case final_stage_is_cheese_fight CompleteStage {wr 0xC060 3} {expect boss [rd 0xC000] 4; expect hp [rd 0xC065] 12}
 case question_mark_is_uploaded LoadGraphics {} {
@@ -707,7 +758,30 @@ case question_mark_is_uploaded LoadGraphics {} {
     foreach bank {0 2048 4096} {expect glyph [debug read_block VRAM [expr {$bank+63*8}] 8] $expected}
 }
 case walking_can_descend_further MovePlayer {wr 0xC060 0; wr 0xC005 158; keymatrixdown 8 64} {expect y [rd 0xC005] 160}
+case fishing_starts_on_shorter_route BeginStage {wr 0xC060 0} {
+    expect shorter_start [rd 0xC017] 108; expect hunger [rd 0xC04E] 100
+    expect home_visible [debug read VRAM 0x1981] 148
+}
+foreach station {42 86} {
+    case fishing_deck_$station UpdateJourney "
+        set f \[open resources/generated/route0.bin rb\]
+        fconfigure \$f -translation binary
+        debug write_block memory 0xD000 \[read \$f\]
+        close \$f
+        wr 0xC060 0; wr 0xC017 [expr {$station-17}]; wr 0xC004 168; wr 0xC04E 10
+    " {expect fed [rd 0xC04E] 11; expect fishing [rd 0xC050] 1}
+}
 case walking_scroll_is_slower UpdateScroll {wr 0xC060 0; wr 0xC016 7} {expect row [rd 0xC017] 138; expect clock [rd 0xC016] 8}
+case canes_begin_on_last_scroll UpdateScroll {wr 0xC060 1; wr 0xC017 1; wr 0xC016 15; wr 0xC004 64; wr 0xC005 160; wr 0xC006 2} {
+    expect challenge [rd 0xC000] 12; expect road_finished [rd 0xC017] 0
+    expect lives_carried [rd 0xC006] 2; expect goal [rd 0xC09A] 0
+}
+case canes_begin_at_road_end UpdateScroll {wr 0xC060 1; wr 0xC017 0; wr 0xC004 176; wr 0xC005 160} {expect challenge [rd 0xC000] 12}
+case canes_wait_for_scroll_end UpdateJourney {wr 0xC060 1; wr 0xC017 3; wr 0xC004 112; wr 0xC005 80} {expect road [rd 0xC000] 1}
+case canes_scroll_until_arrival UpdateScroll {wr 0xC060 1; wr 0xC017 2; wr 0xC016 15; wr 0xC005 160} {
+    expect road [rd 0xC000] 1; expect row [rd 0xC017] 1
+}
+case fishing_still_needs_contact_at_end UpdateScroll {wr 0xC060 0; wr 0xC017 0; wr 0xC005 160} {expect peaceful_road [rd 0xC000] 1}
 case second_walking_scroll_is_slower UpdateScroll {wr 0xC060 1; wr 0xC016 15} {expect row [rd 0xC017] 137}
 case fishing_needs_contact CompleteStage {wr 0xC060 0; wr 0xC017 0; wr 0xC005 152} {expect playing [rd 0xC000] 1}
 case garapa_enters_with_scroll RoadGarapaPosition {wr 0xC060 0; wr 0xC017 10} {expect top [rd 0xC09D] 16}

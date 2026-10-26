@@ -6,7 +6,7 @@ for hz in (50,60):
     suite=(ROOT/f'emulator-{hz}.txt').read_text()
     stress=(ROOT/f'stress-{hz}.txt').read_text()
     assert 'FAIL' not in suite,suite
-    assert '266 Z80 cases; 0 failures' in suite,suite
+    assert '288 Z80 cases; 0 failures' in suite,suite
     assert 'overflow frames=0' in stress,stress
     assert int(re.search(r'maximum sprites/scanline=(\d+)',stress).group(1))<=8,stress
     route=(ROOT/f'route-{hz}.txt').read_text()

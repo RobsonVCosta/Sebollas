@@ -5,6 +5,7 @@ import json
 import math
 import textwrap
 import re
+import random
 from collections import Counter
 from PIL import Image, ImageDraw
 ROOT=Path(__file__).resolve().parents[1]
@@ -86,7 +87,7 @@ for y,x,line in credit_rows:
     records.extend([y,x]+[encoding.get(ch,ord(ch)) for ch in line]+[0])
 records.append(255)
 (OUT/'credits.inc').write_text('CreditLines:\n'+''.join('    db '+','.join(map(str,records[i:i+64]))+'\n' for i in range(0,len(records),64)))
-(OUT/'credits_text.json').write_text(json.dumps({'paragraphs':CREDIT_PARAGRAPHS,'rows':credit_rows},ensure_ascii=False,indent=2)+'\n')
+(OUT/'credits_text.json').write_text(json.dumps({'paragraphs':CREDIT_PARAGRAPHS,'rows':credit_rows,'pixel_rows':[(y*8+3*i,x,line) for i,(y,x,line) in enumerate(credit_rows,1)]},ensure_ascii=False,indent=2)+'\n')
 PROLOGUE_PARAGRAPHS=[
 'Em 1991, três amigos resolveram visitar Sebollas. Este jogo conta a história da saga de Argon, Robson e Wellington durante essa aventura.',
 'Foi mais ou menos assim...']
@@ -100,7 +101,7 @@ for y,x,line in prologue_rows:
     records.extend([y,x]+[{'ê':243,**encoding}.get(ch,ord(ch)) for ch in line]+[0])
 records.append(255)
 (OUT/'prologue.inc').write_text(''.join('    db '+','.join(map(str,records[i:i+64]))+'\n' for i in range(0,len(records),64)))
-(OUT/'prologue_text.json').write_text(json.dumps({'paragraphs':PROLOGUE_PARAGRAPHS,'rows':prologue_rows},ensure_ascii=False,indent=2)+'\n')
+(OUT/'prologue_text.json').write_text(json.dumps({'paragraphs':PROLOGUE_PARAGRAPHS,'rows':prologue_rows,'pixel_rows':[(y*8+3*i,x,line) for i,(y,x,line) in enumerate(prologue_rows)]},ensure_ascii=False,indent=2)+'\n')
 # Scenery uses free tile IDs; the cane arena swaps 186..201 temporarily.
 tiles={}
 def tile(idx,bg,fg,rows):
@@ -112,9 +113,13 @@ def tile(idx,bg,fg,rows):
 tile(128,3,2,[0,0x10,0x28,0x10,0,2,5,2]) # tufts of pasture grass
 tile(129,3,12,[0,0x48,0x54,0x10,0,0x02,0x15,0x08])
 tile(130,6,7,[0,0,0x20,0,0,2,0,0]) # packed dirt
-tile(131,6,14,[0,0x3c,0x7e,0xfe,0xff,0x7e,0x3c,0]) # large rounded road stone
-colors[131*8+1]=0xfd # highlights on the gray stones, over brown dirt
-colors[131*8+2]=0xfd
+# Approved option 2: four native sizes, with angular edges and contact shadows.
+ROAD_STONES=json.loads((ROOT/'resources/road-stones.json').read_text())
+ROAD_STONE_TILES=tuple(ROAD_STONES['tiles'])
+DRIVABLE_TILES=(130,146,157,159)+ROAD_STONE_TILES
+for idx,variant in zip(ROAD_STONE_TILES,ROAD_STONES['variants']):
+    tile(idx,13,14,variant['rows'])
+    colors[idx*8:idx*8+8]=bytes(fg*16+13 for fg in variant['fg'])
 tile(132,3,6,[3,3,7,7,7,15,7,3]) # shoulder left
 tile(133,3,6,[192,192,224,224,224,240,224,192])
 tile(134,3,7,[0x18,0x18,0xff,0x18,0x18,0xff,0x18,0x18]) # fence
@@ -209,6 +214,11 @@ for q in range(32):
 (OUT/'colors.bin').write_bytes(colors)
 # Finite northbound route. The viewport starts at row 138 and ends at row 0.
 WORLD_ROWS=160
+# Remove quiet stretches while keeping both bridges, decks, home and meeting.
+FISHING_ROWS=[y for y in range(WORLD_ROWS) if not (14<=y<=25 or 62<=y<=73 or 122<=y<=127)]
+def fishing_row(source_row): return FISHING_ROWS.index(source_row)
+FISHING_START_ROW=fishing_row(138)
+FISHING_STATIONS=[fishing_row(y) for y in (54,110)]
 def make_route(stage):
     suffix='' if stage==2 else str(stage)
     world=[]
@@ -284,18 +294,29 @@ def make_route(stage):
             world[y][25:27]=[154,156]
             world[y+1][25:27]=[155,156]
             world[y+2][25:27]=[158,128]
+    if stage==0:
+        # Keep the 160-row RAM bundle; its unused tail pads the shorter route.
+        world=[world[y] for y in FISHING_ROWS]
+        centers=[centers[y] for y in FISHING_ROWS]
+        world.extend([world[-1].copy() for _ in range(WORLD_ROWS-len(world))])
+        centers.extend([centers[-1]]*(WORLD_ROWS-len(centers)))
+    for y,row in enumerate(world):
+        for x,t in enumerate(row):
+            if t==131:
+                choice=random.Random(y*32+x+1991).choice(ROAD_STONES['weights'])
+                row[x]=ROAD_STONE_TILES[choice]
     (OUT/f'road_centers{suffix}.bin').write_bytes(bytes(centers))
     # Drivable limits for the complete 16px-wide car; include station forecourts.
     road_bounds=[]
     for y,row in enumerate(world):
-        columns=[x for x,t in enumerate(row) if t in (130,131,146,157,159)]
+        columns=[x for x,t in enumerate(row) if t in DRIVABLE_TILES]
         if stage==2 and y<7:
             road_bounds.extend((120,120))
             continue
         middle=min(columns,key=lambda x:abs(x-centers[y]//8))
         left=right=middle
-        while left>0 and row[left-1] in (130,131,146,157,159): left-=1
-        while right<31 and row[right+1] in (130,131,146,157,159): right+=1
+        while left>0 and row[left-1] in DRIVABLE_TILES: left-=1
+        while right<31 and row[right+1] in DRIVABLE_TILES: right+=1
         road_bounds.extend((left*8,right*8-8))
     (OUT/f'road_bounds{suffix}.bin').write_bytes(bytes(road_bounds))
     (OUT/f'world{suffix}.bin').write_bytes(bytes(t for row in world for t in row))
@@ -479,9 +500,9 @@ assert len(sprites)<=64
 (OUT/'sprite_colors.bin').write_bytes(b''.join(s[1] for s in sprites))
 for i,pal in enumerate(PALETTES):
     (OUT/f'palette{i}.bin').write_bytes(bytes(v for r,g,b in pal for v in ((r<<4)|b,g)))
-metadata.update(world_rows=WORLD_ROWS, start_row=138, stations=[54,110], rivers=[[33,40],[83,90]], road_centers=centers, sprite_count=len(sprites),palettes=PALETTES,font_chars=chars,extra_font_chars=[63,193]+list(range(97,123))+list(extras),scenery_tiles=sorted(tiles))
+metadata.update(road_stone_tiles=ROAD_STONE_TILES, fishing_start_row=FISHING_START_ROW, fishing_stations=FISHING_STATIONS, fishing_rivers=[[fishing_row(a),fishing_row(b)] for a,b in ((33,40),(83,90))],world_rows=WORLD_ROWS, start_row=138, stations=[54,110], rivers=[[33,40],[83,90]], road_centers=centers, sprite_count=len(sprites),palettes=PALETTES,font_chars=chars,extra_font_chars=[63,193]+list(range(97,123))+list(extras),scenery_tiles=sorted(tiles))
 (OUT/'manifest.json').write_text(json.dumps(metadata,indent=2)+'\n')
-(OUT/'assets.inc').write_text('\n'.join(f'{k.upper()}_PATTERN equ {v*4}' for k,v in metadata.items() if k in ('car','cow','dust','cheese','boss','cane','runner_small','runner_tall','runner_fat'))+'\nSPRITE_BYTES equ '+str(len(sprites)*32)+'\n')
+(OUT/'assets.inc').write_text('\n'.join(f'{k.upper()}_PATTERN equ {v*4}' for k,v in metadata.items() if k in ('car','cow','dust','cheese','boss','cane','runner_small','runner_tall','runner_fat'))+'\nSPRITE_BYTES equ '+str(len(sprites)*32)+'\n'+f'FISHING_START_ROW equ {FISHING_START_ROW}\nFISHING_FIRST_DECK equ {FISHING_STATIONS[0]}\nFISHING_SECOND_DECK equ {FISHING_STATIONS[1]}\n')
 print(f'Assets: {len(sprites)} sprite patterns, 160x32 route, original 39-glyph font')
 
 # Alternate boss graphics share the garapa VRAM slots during the second fight.

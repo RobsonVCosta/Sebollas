@@ -63,16 +63,19 @@ proc campaign_drive {} {
         set width [expr {$stage<2 ? 32 : 16}]
         for {set r [expr {$row+$y/8-2}]} {$r<=$row+($y+31)/8-2} {incr r} {
             for {set col [expr {$x/8}]} {$col<=($x+$width-1)/8} {incr col} {
-                if {[rd [expr {0xD000+$r*32+$col}]] ni {130 131 146 157 159}} {incr ::road_errors}
+                if {[rd [expr {0xD000+$r*32+$col}]] ni {130 131 146 157 159 232 233 234}} {incr ::road_errors}
             }
         }
         if {![rd 0xC061]} {keymatrixdown 8 128; return}
         set axle [expr {$row+(($y+8)/8)}]
+        set first_station [expr {$stage==0 ? 42 : 54}]
+        set second_station [expr {$stage==0 ? 86 : 110}]
+        set near_station [expr {($axle>=$first_station-2 && $axle<=$first_station+7) || ($axle>=$second_station-2 && $axle<=$second_station+7)}]
         set target [rd [expr {0xE400+$axle}]]
         if {$stage<2} {incr target -8}
         set goal 128
-        if {($axle<=117 && $axle>=108) || ($axle<=61 && $axle>=52)} {set target 168}
-        if {[rd 0xC050]} {dict set ::stops "$stage-[expr {$row>80 ? 110 : 54}]" 1}
+        if {$near_station} {set target 168}
+        if {[rd 0xC050]} {dict set ::stops "$stage-[expr {abs($axle-$first_station)<abs($axle-$second_station) ? $first_station : $second_station}]" 1}
         if {$stage<2} {
             lassign [avoid_walking_cow $target $goal] target goal
         } else {
@@ -84,8 +87,11 @@ proc campaign_drive {} {
             }
             keymatrixdown 8 1
         }
-        if {$stage<2 && (($axle<=117 && $axle>=108) || ($axle<=61 && $axle>=52))} {
+        if {$stage<2 && ($near_station)} {
             set target 168; set goal 128
+            if {[rd 0xC04E]>30} {
+                lassign [avoid_walking_cow $target $goal] target goal
+            }
         }
         if {$row==0} {set target 120; set goal [expr {$stage==0 ? 96 : 80}]}
         steer $target $goal
@@ -127,7 +133,7 @@ proc campaign_drive {} {
         dict set ::bonus_previous $stage [list $remaining $value]
     } elseif {$state==5} {dict incr ::ending_phases [rd 0xC06E]
     } elseif {$state==8 || $state==9} {dict incr ::art_ticks $state
-    } elseif {$state==6 && [debug read_block VRAM [expr {0x1800+14*32+7}] 17] eq "By Robson Velloso"} {set ::finished true}
+    } elseif {$state==6 && [rd 0xC0CA]} {set ::finished true}
 }
 after time 6 {keymatrixdown 8 1}
 after time 6.1 {keymatrixup 8 1; debug set_bp $::sym(MainLoop.tick) {} {campaign_drive}}

@@ -71,7 +71,7 @@ _bonusClock     equ 0C084h
 _bonusDone      equ 0C085h
 _bonusSoundStep equ 0C086h
 _fuelAlertPitch equ 0C087h
-_creditDest     equ 0C088h ; next VRAM cell; zero begins a new line
+_creditDest     equ 0C088h ; next glyph pattern address; zero begins a new line
 _creditClock    equ 0C08Ah
 _roadMinX       equ 0C08Bh
 _roadMaxX       equ 0C08Ch
@@ -108,6 +108,14 @@ _garapaTileAddr equ 0C0B7h ; previous tile actor rectangle, zero before drawing
 _caneTileAddr   equ 0C0B9h
 _secondCheese   equ 0C0BBh ; active, x, y, target x (second boss projectile)
 _introDone      equ 0C0BFh ; prologue fully revealed, waiting before first stage
+_continueAvailable equ 0C0C0h ; menu option unlocked once gameplay begins
+_continueStage  equ 0C0C1h ; stage to retry from its beginning
+_titleSelection equ 0C0C2h ; 0 Play, 1 Continue
+_menuMoveHeld   equ 0C0C3h
+_continueScore equ 0C0C4h ; four BCD bytes at the start of the saved stage
+_textLine       equ 0C0C8h ; three extra pixels added for every subsequent text line
+_textY          equ 0C0C9h ; first pixel row of the current line
+_textDone       equ 0C0CAh
 _satBuffer      equ 0C100h ; 128 bytes
 _colorBuffer    equ 0C180h ; 512 bytes
 _screenBuffer   equ 0C400h ; 768 bytes

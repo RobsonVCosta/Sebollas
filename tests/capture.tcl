@@ -44,7 +44,10 @@ after time 8 {set ::want_start true}
 after time 8.4 {set ::want_drive true}
 after time 8.1 {keymatrixup 8 1}
 after time 10 {screenshot -raw previews/introducao-escrevendo-openmsx.png}
-after time 15 {screenshot -raw previews/introducao-completa-openmsx.png}
+after time 15 {
+    screenshot -raw previews/introducao-completa-openmsx.png
+    savebin resources/generated/capture-prologue-vram.bin [debug read_block VRAM 0 16384]
+}
 after time 30 {
     screenshot -raw previews/gameplay-openmsx-raw.png
     savebin resources/generated/capture-vram.bin [debug read_block VRAM 0 16384]

@@ -14,7 +14,7 @@ assert v[0x3800:0x3800+len(s)]==expected_sprites
 assert (d/'capture-palette.bin').read_bytes()==(d/'palette0.bin').read_bytes()
 assert v[0x1801:0x1806]==b'SCORE'
 assert bytes(v[a] for a in (0x181b,0x181c,0x181d,0x181e,0x181f))==bytes([140]*5)
-assert all(t==193 or t in range(32,91) or 128<=t<=199 for t in v[0x1840:0x1b00])
+assert all(t==193 or t in range(32,91) or 128<=t<=199 or t in (232,233,234) for t in v[0x1840:0x1b00])
 assert v[0x1821:0x1825]==b'FOME'
 assert v[0x1840-10:0x1840]==b'          '
 print('Captured V9938: 3 pattern/color banks, sprite patterns, palette and fixed HUD match ROM assets')
@@ -57,3 +57,21 @@ for row in range(212):
         assert opening[pos]==expected[pos],('title',row,col)
 assert Image.open(ROOT/'previews/abertura-openmsx.png').size==(256,212)
 print('Captured title: full 256x212 SCREEN 5 bitmap and dedicated palette match ROM assets')
+
+# Verify every requested letter at its pixel position, including 11px line pitch.
+encoding={'ç':240,'é':241,'ó':242,'ê':243,'Ç':244,'í':245}
+for name in ('prologue','credits'):
+    text_vram=(d/f'capture-{name}-vram.bin').read_bytes()
+    rows=json.loads((d/f'{name}_text.json').read_text())['pixel_rows']
+    if name=='credits': rows=[[8,12,'CREDITOS']]+rows
+    def pattern_byte(x,y):
+        tile=text_vram[0x1800+(y//8)*32+x]
+        return text_vram[(y//64)*2048+tile*8+y%8]
+    for y,x,line in rows:
+        for col,ch in enumerate(line,x):
+            code=encoding.get(ch,ord(ch))
+            actual=bytes(pattern_byte(col,y+i) for i in range(8))
+            assert actual==p[code*8:code*8+8],(name,y,col,ch)
+        for gap in range(8,11):
+            assert all(pattern_byte(col,y+gap)==0 for col in range(32)),(name,'extra gap',y+gap)
+    print(f'Captured {name}: font, accents and three extra pixels between lines match')

@@ -8,6 +8,27 @@
   "runner_small": 40,
   "runner_tall": 48,
   "runner_fat": 56,
+  "road_stone_tiles": [
+    131,
+    232,
+    233,
+    234
+  ],
+  "fishing_start_row": 108,
+  "fishing_stations": [
+    42,
+    86
+  ],
+  "fishing_rivers": [
+    [
+      21,
+      28
+    ],
+    [
+      59,
+      66
+    ]
+  ],
   "world_rows": 160,
   "start_row": 138,
   "stations": [
@@ -585,6 +606,9 @@
     191,
     192,
     194,
-    195
+    195,
+    232,
+    233,
+    234
   ]
 }

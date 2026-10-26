@@ -51,6 +51,20 @@ UpdateJourney:
     ld a,(_carX)
     cp 160
     jr c,.consume
+    ; The shorter fishing road has its own two relocated decks.
+    ld a,(_stage)
+    or a
+    jr nz,.standardStations
+    ld a,(_terrainRow)
+    sub FISHING_FIRST_DECK-2
+    cp 10
+    jr c,.station
+    ld a,(_terrainRow)
+    sub FISHING_SECOND_DECK-2
+    cp 10
+    jr nc,.consume
+    jr .station
+.standardStations:
     ; Only the two marked forecourts supply fuel.
     ld a,(_terrainRow)
     sub 52
@@ -86,6 +100,11 @@ UpdateJourney:
     jr z,.arrival
     cp 131
     jr z,.arrival
+    cp 232
+    jr c,.otherTerrain
+    cp 235
+    jr c,.arrival
+.otherTerrain:
     cp 146
     jr z,.arrival
     cp 157
@@ -97,6 +116,8 @@ UpdateJourney:
     ld a,(_stage)
     or a
     jp z,CheckGarapaContact
+    cp 1
+    ret z ; cane challenge starts automatically on the final scroll step
     ld a,(_mapRow)
     cp 4
     ret nc

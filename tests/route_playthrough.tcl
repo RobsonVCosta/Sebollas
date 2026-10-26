@@ -30,7 +30,7 @@ proc drive_route {} {
     if {$fuel<$::minimum_fuel} {set ::minimum_fuel $fuel}
     set filling [debug read memory 0xC050]
     if {$filling} {
-        set station [expr {[debug read memory 0xC017]>80 ? 110 : 54}]
+        set station [expr {[debug read memory 0xC017]>64 ? 86 : 42}]
         dict set ::visited $station 1
         set ::stops [dict size $::visited]
     }
@@ -39,7 +39,7 @@ proc drive_route {} {
     set row [debug read memory 0xC017]
     set axle_row [expr {$row+17}]
     set target [expr {[lindex $::centers $axle_row]-8}]
-    if {($axle_row<=117 && $axle_row>=108) || ($axle_row<=61 && $axle_row>=52)} {set target 168}
+    if {($axle_row<=93 && $axle_row>=84) || ($axle_row<=49 && $axle_row>=40)} {set target 168}
     set x [debug read memory 0xC004]
     keymatrixup 8 255
     if {$x<$target} {keymatrixdown 8 128}

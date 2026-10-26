@@ -17,6 +17,7 @@ ResetGame:
     ld (_cheeseCount),a
     ld (_caneTotal),a
     ld (_caneHundred),a
+    ld (_continueAvailable),a
     ld hl,_scoreBCD_8Digits
     ld b,4
 .score:
@@ -27,7 +28,32 @@ ResetGame:
     ld (_stage),a
     jp BeginPrologue
 
+; Continue restarts the current stage with its original score and five lives.
+ContinueGame:
+    call SetupGameVideo
+    ld a,(_continueStage)
+    ld (_stage),a
+    ld a,5
+    ld (_lives),a
+    ld hl,_continueScore
+    ld de,_scoreBCD_8Digits
+    ld bc,4
+    ldir
+    xor a
+    ld (_cheeseCount),a
+    ld (_caneTotal),a
+    ld (_caneHundred),a
+    jp ShowStageCard
+
 BeginStage:
+    ld a,1
+    ld (_continueAvailable),a
+    ld a,(_stage)
+    ld (_continueStage),a
+    ld hl,_scoreBCD_8Digits
+    ld de,_continueScore
+    ld bc,4
+    ldir
     call SetupGameVideo
     call LoadStageMap
     call LoadWalkingArt
@@ -51,6 +77,7 @@ BeginStage:
     ld (_driveStarted),a
     ld (_driveArmed),a
     ld (_caneActive),a
+    ld (_secondCheese),a
     ld (_cowSerial),a
     ld (_effectTime),a
     ld (_effectTime+1),a
@@ -75,7 +102,12 @@ BeginStage:
     ld (_carY),a
     ld a,48
     ld (_cheeseClock),a
+    ld a,(_stage)
+    or a
     ld a,138
+    jr nz,.startRow
+    ld a,FISHING_START_ROW
+.startRow:
     ld (_mapRow),a
     ld a,100
     ld (_fuel),a

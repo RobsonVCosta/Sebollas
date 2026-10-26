@@ -13,9 +13,12 @@ openmsx -machine C-BIOS_MSX2 -cart Sebollas.rom -romtype ASCII8
 | Comando | Ação |
 | --- | --- |
 | Setas | Movem o trio ou o Fusca dentro da área transitável. |
-| Espaço/Enter na abertura | Inicia a aventura. |
+| Cima/Baixo na abertura | Seleciona Play ou Continue. |
+| Espaço/Enter na abertura | Confirma a opção selecionada. |
 | Espaço nas fases de carro | Buzina; afasta as vacas comuns e atinge o chefe final. |
 | Espaço/Enter em GAME OVER ou nos créditos | Retorna à abertura. Solte antes de iniciar novamente. |
+
+Continue aparece abaixo de Play depois de começar uma partida. Ele reinicia a fase atual com cinco vidas e a pontuação do início dessa fase, sem repetir a introdução da história. A opção fica disponível enquanto a ROM está ligada. Play começa uma nova aventura.
 
 Após o Play, uma introdução conta a história de 1991, com a mesma fonte e escrita letra a letra dos créditos. Cada caractere produz um breve estalo de máquina de escrever. O texto completo permanece cinco segundos antes do cartão “Indo pescar”.
 
@@ -65,7 +68,7 @@ make                  # monta a ROM e os símbolos
 make assets           # recria sprites, mapas e imagens de 256 cores
 make previews         # recria prévias estáticas
 make test             # montagem e 16 testes Python
-make test-emulator    # 266 rotinas Z80 e campanha completa em 50/60 Hz
+make test-emulator    # 288 rotinas Z80 e campanha completa em 50/60 Hz
 make captures         # capturas reais do V9938
 ```
 
@@ -108,3 +111,9 @@ O burro substitui os cachorros nas duas etapas a pé, com o mesmo tamanho de 32�
 O sprite foi gerado com `imagegen` e convertido à paleta e aos padrões nativos do MSX2. A referência transparente está em `resources/donkey-reference.png`, a prévia convertida em `previews/donkey-0-8x.png` e o prompt em `resources/donkey-prompt.json`. As antigas ROMs nomeadas `Sebollas-cachorro-*.rom` são versões anteriores; a versão atual é `Sebollas.rom`.
 
 O homem do queijo lança dois queijos simultâneos em trajetórias separadas. Cada um tem colisão e movimento próprios, respeitando o limite de oito sprites por linha.
+
+Na estrada que leva ao desafio das canas, o último passo do scroll abre automaticamente a arena, em qualquer posição dos garotos na pista. Não é preciso subir até o topo.
+
+“Indo pescar” tem 108 passos de scroll, cerca de 22% menos que o percurso anterior de 138. Os dois decks, as duas pontes, a casa inicial e o encontro com o garoto da garapa foram preservados.
+
+As pedras usam a opção 2 aprovada, com quatro tamanhos de lascas irregulares. A introdução e os créditos mantêm a fonte de 8 pixels, com três pixels extras entre as linhas (passo de 11 pixels nas linhas consecutivas).

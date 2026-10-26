@@ -88,6 +88,9 @@ MainLoop:
     jp nz,MainLoop
     call UpdateHornInput
     call UpdateScroll
+    ld a,(_state)
+    cp 1
+    jp nz,MainLoop
     call UpdateCheese
     call UpdateCows
     call CheckHits
@@ -231,6 +234,9 @@ ReadStart:
     ld a,1
     ret
 MenuTick:
+    ld a,(_state)
+    or a
+    call z,UpdateTitleSelection
     call ReadStart
     or a
     jr nz,.pressed
@@ -246,6 +252,13 @@ MenuTick:
     ld a,(_state)
     cp 2
     jr nc,.title
+    ld a,(_continueAvailable)
+    or a
+    jr z,.newGame
+    ld a,(_titleSelection)
+    or a
+    jp nz,ContinueGame
+.newGame:
     call SoundStart
     jp ResetGame
 .title:
@@ -262,13 +275,20 @@ MenuTick:
     ld a,(_tick)
     and 16
     xor 16
-    jp DrawTitlePlay
+    ld b,a
+    ld a,(_titleSelection)
+    or a
+    ld a,b
+    jp z,DrawTitlePlay
+    jp DrawTitleContinue
 
 ShowMenu:
     call StopMusic
     xor a
     ld (_state),a
     ld (_startArmed),a
+    ld (_titleSelection),a
+    ld (_menuMoveHeld),a
     jp ShowTitleArt
 
 ShowGameOver:
@@ -439,7 +459,7 @@ UpdateScroll:
     ret nz
     ld a,(_mapRow)
     or a
-    ret z
+    jr z,.endOfRoad
     ld a,(_stage)
     cp 2
     ld b,7
@@ -454,6 +474,12 @@ UpdateScroll:
     ld a,(_mapRow)
     dec a
     ld (_mapRow),a
+    or a
+    jr nz,.moveActors
+    ld a,(_stage)
+    cp 1
+    jp z,BeginCaneChallenge
+.moveActors:
     ld ix,_cows
     call .moveCow
     ld ix,_cows+8
@@ -462,6 +488,11 @@ UpdateScroll:
     call .moveCow
     call ClampCarToRoad
     jp DrawWorld
+.endOfRoad:
+    ld a,(_stage)
+    cp 1
+    jp z,BeginCaneChallenge
+    ret
 .moveCow:
     ld a,(ix+0)
     or a
@@ -1028,6 +1059,7 @@ GameDataEnd:
     disp 8000h
 TitlePalette: incbin "resources/generated/title_palette.bin"
 TitlePlayOn: incbin "resources/generated/title_play.bin"
+TitleContinueOn: incbin "resources/generated/title_continue.bin"
 TitleBitmapRLE: incbin "resources/generated/title.rle"
 TitleBankEnd:
     ASSERT TitleBankEnd <= 0C000h

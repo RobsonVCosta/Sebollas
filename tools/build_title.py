@@ -8,10 +8,11 @@ OUT=ROOT/'resources/generated'
 OUT.mkdir(exist_ok=True)
 source=Image.open(ROOT/'resources/title-reference.png').convert('RGB')
 assert source.size==(256,212)
-# Preserve the art; replace the decorative menu with the game's single action.
+# Preserve the art; reserve the second action for the runtime Continue menu.
 background=(1,39,159)
 d=ImageDraw.Draw(source)
 d.rectangle((144,90,201,116),fill=background)
+d.rectangle((152,112,223,119),fill=background)
 font=(ROOT/'resources/font-original.bin').read_bytes()
 chars=[32,127,45]+list(range(48,58))+list(range(65,91))
 for i,ch in enumerate('PLAY'):
@@ -59,6 +60,18 @@ def compress(data):
     return bytes(result)
 packed=compress(bitmap)
 play=b''.join(bitmap[y*128+76:y*128+96] for y in range(100,108))
+# Continue uses the same quantized palette and original font as PLAY.
+continued=source.copy()
+for i,ch in enumerate('CONTINUE'):
+    rows=font[chars.index(ord(ch))*8:chars.index(ord(ch))*8+8]
+    for y,bits in enumerate(rows):
+        for x in range(8):
+            if bits&(128>>x): continued.putpixel((160+i*8+x,112+y),(255,255,220))
+ImageDraw.Draw(continued).polygon([(152,113),(157,116),(152,119)],fill=(255,255,220))
+cpixels=[nearest(rgb) for rgb in continued.getdata()]
+cbitmap=bytes((cpixels[i]<<4)|cpixels[i+1] for i in range(0,len(cpixels),2))
+continue_button=b''.join(cbitmap[y*128+76:y*128+112] for y in range(112,120))
+(OUT/'title_continue.bin').write_bytes(continue_button)
 (OUT/'title.rle').write_bytes(packed)
 (OUT/'title_bitmap.bin').write_bytes(bitmap)
 (OUT/'title_play.bin').write_bytes(play)
@@ -71,3 +84,9 @@ im.putpalette([v for rgb in rgbpal for v in rgb]+[0]*(768-48))
 im.convert('RGB').save(ROOT/'previews/abertura-convertida.png')
 im.convert('RGB').resize((1024,848),Image.NEAREST).save(ROOT/'previews/abertura-convertida-4x.png')
 print(f'Title: {len(bitmap)} SCREEN 5 bytes -> {len(packed)} RLE bytes, 16-color hardware palette')
+
+preview_pixels=cpixels.copy()
+for y in range(112,120):
+    preview_pixels[y*256+152:y*256+158]=[nearest(background)]*6
+im.putdata(preview_pixels)
+im.convert('RGB').resize((1024,848),Image.NEAREST).save(ROOT/'previews/abertura-continue-4x.png')

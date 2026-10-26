@@ -41,7 +41,13 @@ after time 9 {
 }
 after time 9.6 {screenshot -raw previews/onibus-openmsx-raw.png}
 after time 10 {draw_checkpoint {ShowCredits}}
-after time 18.6 {screenshot -raw previews/creditos-openmsx-raw.png}
+after time 18.6 {
+    screenshot -raw previews/creditos-openmsx-raw.png
+    set f [open resources/generated/capture-credits-vram.bin wb]
+    fconfigure $f -translation binary
+    puts -nonewline $f [debug read_block VRAM 0 16384]
+    close $f
+}
 after time 19 {
     foreach {addr val} {0xC060 1 0xC058 9 0xC008 0 0xC009 0 0xC00A 0x10 0xC00B 0} {debug write memory $addr $val}
     draw_checkpoint {SetupGameVideo ApplyStagePalette BeginCheeseBonus}
