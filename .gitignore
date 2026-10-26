@@ -7,3 +7,5 @@ __pycache__/
 /resources/generated/capture.txt
 /resources/generated/route-*.txt
 /resources/generated/campaign-*.txt
+/resources/generated/going-home-*.txt
+/resources/generated/secret-menu-*.txt

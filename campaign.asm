@@ -242,6 +242,9 @@ BeginBoss:
     ld (_musicStep),a
     ld (_musicClock),a
     call LoadBossArt
+    ld a,(_stage)
+    cp 3
+    call z,InitBossCows
     call ClearArena
     call DrawArenaStation
     ld de,GarapaText
@@ -335,6 +338,15 @@ BossTick:
     ld a,(_state)
     cp 4
     ret nz
+    ld a,(_stage)
+    cp 3
+    jr nz,.hud
+    call UpdateBossCows
+    call CheckHits
+    ld a,(_state)
+    cp 4
+    ret nz
+.hud:
     ld a,(_tick)
     and 3
     call z,DrawHUD
@@ -567,6 +579,8 @@ BuildBossSprites:
     ld ix,_secondCheese
     call DrawBossProjectile
     ld ix,_thirdCheese
+    call DrawBossProjectile
+    jp DrawBossCows
 DrawBossProjectile:
     ld a,(ix+0)
     or a

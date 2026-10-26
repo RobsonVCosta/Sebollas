@@ -1,0 +1,20 @@
+{
+  "title": "Going Home Wild Theme",
+  "source": "going-home-sheet-reference.pdf",
+  "source_sha256": "be7c27641bf1a07c739f52089c81a435f6e9a33a8aae9224519b27006622c618",
+  "tempo_bpm": 112,
+  "tick_rate": 50,
+  "measures": 87,
+  "beats": 332,
+  "events": 1135,
+  "ticks": 8893,
+  "event_bytes": 7,
+  "channels": {
+    "A": "bass",
+    "B": "inner voice",
+    "C": "melody"
+  },
+  "rom_bank": 6,
+  "seconds": 177.86,
+  "loop": false
+}

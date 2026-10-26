@@ -50,6 +50,8 @@ A paisagem usa árvores de copa maior, arbustos, flores, pequenas plantações e
 
 A música de estrada é a redução para dois canais da partitura fornecida em `resources/sultans-sheet-reference.png`: 14 compassos de *Sultans of Swing*, em 4/4 a 148 BPM, formando um loop de 22,70 segundos. O canal C toca a nota superior da mão direita e o canal A toca a linha de baixo da mão esquerda, reduzindo as oitavas a uma nota. Pausas, ligaduras, tercinas e a pequena nota de ornamento estão transcritas em `resources/sultans-score.json`. `make music` converte as posições em batidas para eventos PSG. Os efeitos continuam tendo prioridade e os encontros com inimigos mantêm a música dramática.
 
+Depois da derrota do homem do queijo, o bônus final inicia *Going Home Wild Theme*, da partitura fornecida em `resources/going-home-sheet-reference.pdf`. O arranjo dos 87 compassos usa os três canais do PSG: A para o baixo, B para a voz interna e C para a melodia. A redução está em `resources/going-home-score.json`, a 112 BPM (40% mais rápida que os 80 BPM da partitura), com pausas, ligaduras e tercinas; acordes de piano são reduzidos a notas individuais e ornamentos a suas notas principais. Os compassos curtos de transição mantêm sua duração escrita; as fermatas usam a duração da nota. A música dura aproximadamente 2min58s, toca uma única vez e continua sem reiniciar nas duas imagens finais, na cena do ônibus e nos créditos. Os sons de contagem do bônus ocupam temporariamente seus canais, enquanto as outras vozes e o andamento continuam. `make music` também gera esse arranjo, armazenado no banco ASCII8 6.
+
 A buzina foi ajustada a `resources/horn-reference.ogg`: corpo perto de 338 Hz, brilho metálico perto de 3,1 kHz, pequenas variações de altura e entrada/saída suaves. Mantém o “bi” de 120 ms, a pausa de 80 ms e o “biiii” de 640 ms. [Ouvir a saída real do PSG](previews/buzina-msx.ogg), gravada com `tests/capture_horn.tcl`.
 
 Após a vitória final e o bônus, `ending-1-reference` e `ending-2-reference` aparecem em sequência, cinco segundos cada, com música de fundo. Em seguida, o Fusca estaciona e os três amigos saem; após dois segundos, o ônibus passa pela esquerda e eles correm atrás dele. Então os créditos surgem letra a letra, a 25 caracteres por segundo:
@@ -68,8 +70,8 @@ Necessário: SjASMPlus. Python 3 e Pillow são usados para recriar os recursos e
 make                  # monta a ROM e os símbolos
 make assets           # recria sprites, mapas e imagens de 256 cores
 make previews         # recria prévias estáticas
-make test             # montagem e 16 testes Python
-make test-emulator    # 295 rotinas Z80 e campanha completa em 50/60 Hz
+make test             # montagem e 20 testes Python
+make test-emulator    # 386 rotinas Z80, música completa e campanha em 50/60 Hz
 make captures         # capturas reais do V9938
 ```
 
@@ -130,3 +132,7 @@ Nas duas etapas a pé, cada burro lança uma bolinha preta pela traseira, mirand
 O homem do queijo passa de dois para três queijos por lançamento quando restam três pontos de vida ou menos (dos 12 iniciais). Os três saem juntos, com o central um pouco à frente para preservar a visibilidade de todos os sprites.
 
 O cartão da fase final mostra “O homem do queijo” abaixo de “FASE FINAL”.
+
+Na chegada da fase final, o cenário continua rolando até a entrada do homem do queijo alcançar o carro, sem exigir que o jogador suba na tela. Duas vacas de 32×32, do mesmo tamanho das fases anteriores, cruzam a arena em faixas separadas; a buzina as afasta. O canal de baixo ganhou volume na estrada e no encerramento.
+
+Na tela de PLAY, digitar **1914** revela a seleção horizontal **1 2 3 4 5 6 7**. Use esquerda/direita e confirme com Enter ou Espaço: **1** começo, **2** fase Garapa, **3** batalha com o garoto da garapa, **4** estrada até o bar, **5** fase final, **6** batalha com o homem do queijo, **7** encerramento. Cada atalho começa com cinco vidas e pontuação zerada.

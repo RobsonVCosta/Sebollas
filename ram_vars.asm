@@ -116,7 +116,7 @@ _continueScore equ 0C0C4h ; four BCD bytes at the start of the saved stage
 _textLine       equ 0C0C8h ; three extra pixels added for every subsequent text line
 _textY          equ 0C0C9h ; first pixel row of the current line
 _textDone       equ 0C0CAh
-_musicMode      equ 0C0CBh ; 0 supplied road excerpt, 1 dramatic battle theme
+_musicMode      equ 0C0CBh ; 0 road excerpt, 1 battle theme, 2 Going Home ending
 _musicBackingPeriod equ 0C0CCh ; channel A tone, suppressed by foreground effects
 _playerCane     equ 0C0CEh ; active, x, y; upward projectile in the garapa fight
 _playerCaneX    equ 0C0CFh
@@ -132,6 +132,15 @@ _compositeDest equ 0C0DDh
 _compositeRow equ 0C0DFh
 _compositePattern equ 0C0E0h
 _thirdCheese equ 0C0E1h ; active,x,y,target; enabled at 3 boss HP or less
+_endingMusicNext equ 0C0E5h ; word: next seven-byte event in ASCII8 bank 6
+_musicHarmonyPeriod equ 0C0E7h ; word: ending channel B
+_finalGateY equ 0C0E9h ; scrolling arrival boundary in the final approach
+_secretCodePos equ 0C0EAh
+_secretMenu equ 0C0EBh
+_secretChoice equ 0C0ECh ; 0..6, displayed as 1..7
+_secretDrawIndex equ 0C0EDh
+_secretDrawDest equ 0C0EEh ; word: SCREEN 5 VRAM address
+_secretInk equ 0C0F0h
 _satBuffer      equ 0C100h ; 128 bytes
 _colorBuffer    equ 0C180h ; 512 bytes
 _screenBuffer   equ 0C400h ; 768 bytes

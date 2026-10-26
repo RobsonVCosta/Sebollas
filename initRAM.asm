@@ -47,6 +47,8 @@ ContinueGame:
     jp ShowStageCard
 
 BeginStage:
+    ld a,88
+    ld (_finalGateY),a
     call ResetDonkeyShots
     ld a,1
     ld (_continueAvailable),a

@@ -253,7 +253,7 @@ ReadStart:
 MenuTick:
     ld a,(_state)
     or a
-    call z,UpdateTitleSelection
+    call z,UpdateTitleInput
     call ReadStart
     or a
     jr nz,.pressed
@@ -269,6 +269,9 @@ MenuTick:
     ld a,(_state)
     cp 2
     jr nc,.title
+    ld a,(_secretMenu)
+    or a
+    jp nz,LaunchSecretStage
     ld a,(_continueAvailable)
     or a
     jr z,.newGame
@@ -283,6 +286,9 @@ MenuTick:
     jp ShowMenu
 .blink:
     ld a,(_state)
+    or a
+    ret nz
+    ld a,(_secretMenu)
     or a
     ret nz
     ld a,(_tick)
@@ -305,6 +311,10 @@ ShowMenu:
     ld (_startArmed),a
     ld (_titleSelection),a
     ld (_menuMoveHeld),a
+    ld (_secretCodePos),a
+    ld (_secretMenu),a
+    ld (_secretChoice),a
+    call ClearTitleKeys
     jp ShowTitleArt
 
 ShowGameOver:
@@ -475,7 +485,11 @@ UpdateScroll:
     ret nz
     ld a,(_mapRow)
     or a
-    jr z,.endOfRoad
+    jr nz,.scrolling
+    ld a,(_stage)
+    cp 3
+    jr nz,.endOfRoad
+.scrolling:
     ld a,(_stage)
     cp 2
     ld b,8
@@ -495,6 +509,11 @@ UpdateScroll:
     or a
     ret nz
     ld a,(_mapRow)
+    or a
+    jr nz,.advanceMap
+    call ExtendFinalApproach
+    jr .moveActors
+.advanceMap:
     dec a
     ld (_mapRow),a
     or a
@@ -701,6 +720,16 @@ CheckHits:
     ld c,36
     ld d,24
     ld e,48
+    ld a,(_state)
+    cp 4
+    jr nz,.normalCow
+    ld a,(_stage)
+    cp 3
+    jr nz,.normalCow
+    ld a,(ix+6)
+    or a
+    ret z
+.normalCow:
     ld a,(_stage)
     cp 2
     jr nc,.body
@@ -968,6 +997,13 @@ BuildSprites:
     add a,DUST_PATTERN/4
     call AppendSprite
 .cows:
+    ld a,(_state)
+    cp 4
+    jr nz,.roadCows
+    ld a,(_stage)
+    cp 3
+    jr z,.items ; arena cows follow the boss and projectiles
+.roadCows:
     ld ix,_cows
     call DrawCow
     ld ix,_cows+8
@@ -1040,6 +1076,7 @@ UploadSprites:
 
     include bonus.asm
     include campaign.asm
+    include boss_cows.asm
     include donkey_shots.asm
     include cheese.asm
     include route.asm
@@ -1049,6 +1086,7 @@ UploadSprites:
     include sfx.inc
     include music.asm
     include title.asm
+    include secret_menu.asm
     include ending_art.asm
     include walking.asm
 TitleText: db "SEBOLLAS",0
@@ -1100,7 +1138,12 @@ TitleBankEnd:
     defs 0C000h-$,0FFh
     ent
     org 0
-    defs 4000h,0FFh ; unused banks 6 and 7, power-of-two 64K cartridge
+    disp 0A000h
+    include "resources/generated/going_home.inc" ; ending music in ASCII8 bank 6
+    ASSERT $ <= 0C000h
+    defs 0C000h-$,0FFh
+    ent
+    defs 2000h,0FFh ; unused bank 7
     ASSERT $ == 4000h
     ; Each illustration occupies a 64 KiB region (eight ASCII8 banks).
     org 0

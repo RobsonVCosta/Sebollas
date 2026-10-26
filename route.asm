@@ -121,6 +121,18 @@ UpdateJourney:
     jp z,CheckGarapaContact
     cp 1
     ret z ; cane challenge starts automatically on the final scroll step
+    cp 3
+    jr nz,.standardArrival
+    ld a,(_mapRow)
+    cp 4
+    ret nc
+    ld a,(_carY)
+    ld b,a
+    ld a,(_finalGateY)
+    cp b
+    jp nc,CompleteStage
+    ret
+.standardArrival:
     ld a,(_mapRow)
     cp 4
     ret nc
@@ -133,6 +145,25 @@ UpdateJourney:
     cp 137
     ret nc
     jp CompleteStage
+
+; Extend the north approach while keeping picture and collision bounds aligned.
+ExtendFinalApproach:
+    ld a,(_finalGateY)
+    add a,8
+    ld (_finalGateY),a
+    ld hl,WorldMap+23*32-1
+    ld de,WorldMap+24*32-1
+    ld bc,23*32
+    lddr
+    ld hl,RoadCenters+22
+    ld de,RoadCenters+23
+    ld bc,23
+    lddr
+    ld hl,RoadBounds+23*2-1
+    ld de,RoadBounds+24*2-1
+    ld bc,23*2
+    lddr
+    ret
 
 LoseLife:
     ld a,100

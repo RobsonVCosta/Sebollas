@@ -218,6 +218,32 @@ class Assets(unittest.TestCase):
         self.assertEqual(manifest["tempo_bpm"],148)
         self.assertEqual(manifest["measures"],14)
         self.assertEqual(packed[-5:-1],bytes(4))
+    def test_going_home_full_arrangement_and_rom_bank(self):
+        import json, hashlib, struct
+        from fractions import Fraction
+        data=ROOT/'resources/generated'
+        score=json.loads((ROOT/'resources/going-home-score.json').read_text())
+        manifest=json.loads((data/'going_home_manifest.json').read_text())
+        self.assertEqual(hashlib.sha256((ROOT/'resources'/score['source']).read_bytes()).hexdigest(),score['source_sha256'])
+        self.assertEqual(len(score['measures']),87)
+        for measure in score['measures']:
+            for channel in 'ABC':
+                beats=sum(Fraction(token.split(':')[1].rstrip('~')) for token in measure[channel].split())
+                self.assertEqual(beats,measure['beats'])
+        packed=(data/'going_home.bin').read_bytes()
+        self.assertEqual(len(packed),manifest['events']*7)
+        self.assertLessEqual(len(packed),8192)
+        events=list(struct.iter_unpack('<HHHB',packed))
+        self.assertEqual(sum(event[3] for event in events),8893)
+        self.assertTrue(all(0<=period<=4095 for event in events for period in event[:3]))
+        self.assertTrue(all(event[3]>0 for event in events))
+        self.assertTrue(any(all(event[:3]) for event in events), 'three simultaneous voices')
+        # The score begins with D1/D2 and a three-beat melody rest, then A3.
+        timeline=[event[:3] for event in events for _ in range(event[3])]
+        self.assertEqual(timeline[0],(3047,1524,0))
+        self.assertEqual(timeline[80][2],508)
+        self.assertEqual((ROOT/'Sebollas.rom').read_bytes()[0xC000:0xC000+len(packed)],packed)
+
     def test_cheese_enemy_graphics_fit_shared_vram_slots(self):
         data=ROOT/'resources/generated'
         self.assertEqual(len((data/'cheese_boss_patterns.bin').read_bytes()),256)

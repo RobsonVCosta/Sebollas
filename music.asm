@@ -2,10 +2,21 @@
 ; C carries the melody. A supplies backing only while no foreground effect owns it.
 UpdateMusic:
     ld a,(_state)
+    cp 5
+    jp z,UpdateEndingMusic
+    cp 6
+    jp z,UpdateEndingMusic
     cp 8
-    jr z,.active
+    jp z,UpdateEndingMusic
     cp 9
-    jr z,.active
+    jp z,UpdateEndingMusic
+    cp 7
+    jr nz,.normalState
+    ld a,(_stage)
+    cp 3
+    jp z,UpdateEndingMusic
+    jp StopMusic
+.normalState:
     cp 11
     jr z,.active
     cp 12
@@ -32,6 +43,8 @@ UpdateMusic:
     ld a,(_musicMode)
     cp b
     jr z,.sameMode
+    cp 2
+    call z,StopMusic
     ld a,b
     ld (_musicMode),a
     xor a
@@ -158,7 +171,7 @@ UpdateMusicBacking:
     ld e,h
     call Psg_write
     ld a,8
-    ld e,6
+    ld e,9
     jp Psg_write
 .mute:
     ld a,8
@@ -166,7 +179,21 @@ UpdateMusicBacking:
     jp Psg_write
 
 StopMusic:
+    ld a,(_musicMode)
+    cp 2
+    jr nz,.reset
+    ld a,(_effectTime+1)
+    or a
+    jr nz,.reset
+    ld a,9
+    ld e,0
+    call Psg_write
+.reset:
     xor a
+    ld (_endingMusicNext),a
+    ld (_endingMusicNext+1),a
+    ld (_musicHarmonyPeriod),a
+    ld (_musicHarmonyPeriod+1),a
     ld (_musicStep),a
     ld (_musicClock),a
     ld (_musicPeriod),a
@@ -189,6 +216,113 @@ StopMusic:
     ret nz
     ld a,10
     ld e,0
+    jp Psg_write
+
+; Continuous three-voice ending: final bonus, illustrations, bus and credits.
+; Effects borrow only their own channel; the score clock never pauses for them.
+UpdateEndingMusic:
+    ld a,(_musicMode)
+    cp 2
+    jr z,.clock
+    ld a,2
+    ld (_musicMode),a
+    xor a
+    ld (_musicClock),a
+    ld hl,GoingHomeNotes
+    ld (_endingMusicNext),hl
+.clock:
+    ld a,(_musicClock)
+    or a
+    jr z,.next
+    dec a
+    ld (_musicClock),a
+    jr nz,.play
+.next:
+    ld hl,(_endingMusicNext)
+    ld de,GoingHomeNotesEnd
+    ld a,h
+    cp d
+    jr nz,.load
+    ld a,l
+    cp e
+    jr z,.finished
+.load:
+    ; Only A000-BFFF changes. Illustration copies own 8000-9FFF, and all
+    ; executable code remains in 4000-7FFF. Restore the game-data bank.
+    ld a,6
+    ld (07800h),a
+    ld hl,(_endingMusicNext)
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    inc hl
+    ld (_musicBackingPeriod),de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    inc hl
+    ld (_musicHarmonyPeriod),de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    inc hl
+    ld (_musicPeriod),de
+    ld a,(hl)
+    inc hl
+    ld (_musicClock),a
+.save:
+    ld (_endingMusicNext),hl
+    ld a,3
+    ld (07800h),a
+    jr .play
+.finished:
+    ; Latch ending mode and the end pointer so the song cannot restart.
+    ld hl,0
+    ld (_musicBackingPeriod),hl
+    ld (_musicHarmonyPeriod),hl
+    ld (_musicPeriod),hl
+.play:
+    ld a,(_effectTime)
+    or a
+    jr nz,.harmony
+    ld hl,(_musicBackingPeriod)
+    ld bc,000Ah ; A: bass, volume 10
+    call PlayEndingVoice
+.harmony:
+    ld a,(_effectTime+1)
+    or a
+    jr nz,.lead
+    ld hl,(_musicHarmonyPeriod)
+    ld bc,0106h ; B: inner part, volume 6
+    call PlayEndingVoice
+.lead:
+    ld a,(_effectTime+2)
+    or a
+    ret nz
+    ld hl,(_musicPeriod)
+    ld bc,0209h ; C: melody, volume 9
+    jp PlayEndingVoice
+
+PlayEndingVoice:
+    ld a,h
+    or l
+    jr z,.mute
+    ld a,b
+    add a,a
+    ld e,l
+    call Psg_write
+    ld a,b
+    add a,a
+    inc a
+    ld e,h
+    call Psg_write
+    ld e,c
+    jr .volume
+.mute:
+    ld e,0
+.volume:
+    ld a,b
+    add a,8
     jp Psg_write
 
     include "resources/generated/sultans.inc"

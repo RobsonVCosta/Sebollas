@@ -28,8 +28,12 @@ proc prepare {} {
     close $f
     debug write memory 0x7000 2
     debug write memory 0x7800 3
+    set ::game_bank [debug read_block memory 0xA000 16]
     foreach {a v} {0xC000 1 0xC004 120 0xC005 128 0xC006 5 0xC007 0 0xC015 0 0xC018 64 0xC017 138 0xC04E 100 0xC04F 0 0xC050 0 0xC052 0 0xC053 0 0xC054 0 0xC055 0 0xC056 0 0xC057 48 0xC058 0 0xC01C 0 0xC01D 0 0xC01E 0 0xC059 0 0xC05A 0 0xC05B 0 0xC05C 0 0xC05D 0 0xC05E 0 0xC060 2 0xC061 1 0xC062 1 0xC063 0 0xC064 0 0xC065 12 0xC066 120 0xC067 0 0xC068 24 0xC069 0 0xC06A 0 0xC06B 0 0xC06C 120 0xC06D 0 0xC077 0 0xC078 0 0xC079 0 0xC07A 0 0xC084 0 0xC085 0 0xC086 0 0xC087 0 0xC08F 0 0xC090 0 0xC099 0 0xC09A 0 0xC09E 0 0xC0AC 0 0xC0B6 0 0xC0B7 0 0xC0B8 0 0xC0B9 0 0xC0BA 0 0xC0BB 0 0xC0BC 0 0xC0BD 0 0xC0BE 0 0xC0BF 0 0xC0C0 0 0xC0C1 0 0xC0C2 0 0xC0C3 0 0xC0C4 0 0xC0C5 0 0xC0C6 0 0xC0C7 0 0xC0C8 0 0xC0C9 0 0xC0CA 0 0xC0CB 0 0xC0CC 0 0xC0CD 0 0xC0CE 0 0xC0CF 0 0xC0D0 0 0xC0D1 0 0xC0D2 0 0xC0D3 0 0xC0D4 0 0xC0D5 0 0xC0D6 0 0xC0D7 0} {wr $a $v}
     for {set a 0xC0E1} {$a<0xC0E5} {incr a} {wr $a 0}
+    for {set a 0xC0E5} {$a<0xC0E9} {incr a} {wr $a 0}
+    wr 0xC0E9 88
+    for {set a 0xC0EA} {$a<=0xC0F0} {incr a} {wr $a 0}
     for {set a 0xC380} {$a<0xC3B0} {incr a} {wr $a 0}
     for {set a 0xC008} {$a<0xC00C} {incr a} {wr $a 0}
     for {set a 0xC020} {$a<0xC038} {incr a} {wr $a 0}
@@ -313,7 +317,7 @@ case horn_long_finishes UpdateSound {
     wr 0xC059 3; wr 0xC05A 1; wr 0xC01C 1; wr 0xC01D 1
 } {
     expect phase [rd 0xC059] 0
-    expect backing_resumes [debug read {PSG regs} 8] 6
+    expect backing_resumes [debug read {PSG regs} 8] 9
     expect silent_b [debug read {PSG regs} 9] 0
 }
 case horn_does_not_restart SoundHorn {wr 0xC059 3; wr 0xC05A 12} {
@@ -348,7 +352,7 @@ case spawn_matches_curve UpdateCows {wr 0xC060 2; wr 0xC017 70; wr 0xC018 1} {
 case music_starts UpdateMusic {} {
     expect melody_rest [debug read {PSG regs} 10] 0
     expect backing [expr {[debug read {PSG regs} 0]+256*[debug read {PSG regs} 1]}] 1524
-    expect backing_volume [debug read {PSG regs} 8] 6
+    expect backing_volume [debug read {PSG regs} 8] 9
     expect next_note [rd 0xC05B] 1; expect duration [rd 0xC05C] 19
 }
 case music_advances UpdateMusic {wr 0xC05B 2; wr 0xC05C 1; wr 0xC05D 64; wr 0xC05E 1} {
@@ -367,7 +371,7 @@ case battle_switch_resets_long_road_index UpdateMusic {wr 0xC000 4; wr 0xC05B 10
 case road_switch_restarts_excerpt UpdateMusic {wr 0xC0CB 1; wr 0xC05B 31; wr 0xC05C 6} {
     expect mode [rd 0xC0CB] 0; expect next [rd 0xC05B] 1
     expect melody_rest [debug read {PSG regs} 10] 0
-    expect backing_volume [debug read {PSG regs} 8] 6
+    expect backing_volume [debug read {PSG regs} 8] 9
 }
 case backing_yields_to_horn UpdateMusic {wr 0xC059 1; wr 0xC05C 8; wr 0xC0CC 252; wr 0xC0CD 1; debug write {PSG regs} 8 13; debug write {PSG regs} 0 75; debug write {PSG regs} 1 1} {
     expect horn_volume [debug read {PSG regs} 8] 13; expect horn_pitch [expr {[debug read {PSG regs} 0]+256*[debug read {PSG regs} 1]}] 331
@@ -376,7 +380,7 @@ case backing_yields_to_effect UpdateMusic {wr 0xC01C 3; wr 0xC05C 8; wr 0xC05D 6
     expect effect_volume [debug read {PSG regs} 8] 12; expect lead_volume [debug read {PSG regs} 10] 9
 }
 case backing_resumes_after_effect UpdateSound {wr 0xC01C 1; wr 0xC05C 8; wr 0xC05D 64; wr 0xC05E 1; wr 0xC0CC 252; wr 0xC0CD 1} {
-    expect effect_done [rd 0xC01C] 0; expect backing_volume [debug read {PSG regs} 8] 6
+    expect effect_done [rd 0xC01C] 0; expect backing_volume [debug read {PSG regs} 8] 9
     expect backing_pitch [expr {[debug read {PSG regs} 0]+256*[debug read {PSG regs} 1]}] 508
 }
 case stop_mutes_both_music_voices StopMusic {debug write {PSG regs} 8 6; debug write {PSG regs} 10 9; wr 0xC0CC 252; wr 0xC0CD 1} {
@@ -426,7 +430,7 @@ case horn_sequence_start SoundHorn {} {
 }
 case sound_finishes UpdateSound {wr 0xC01C 1} {
     expect duration [rd 0xC01C] 0
-    expect backing_resumes [debug read {PSG regs} 8] 6
+    expect backing_resumes [debug read {PSG regs} 8] 9
 }
 case invulnerability_expires MovePlayer {wr 0xC007 1} {expect timer [rd 0xC007] 0}
 case waiting_does_not_scroll UpdateScroll {wr 0xC061 0; wr 0xC016 7} {expect map [rd 0xC017] 138}
@@ -511,10 +515,63 @@ case second_art_then_car EndingArtTick {wr 0xC000 9; wr 0xC063 1; wr 0xC064 0} {
     expect car [rd 0xC005] 120; expect waiting_boys [rd 0xC072] 255
     expect no_victory_text [expr {[debug read_block VRAM 0x1867 17] ne "VENCEMOS O QUEIJO!"}] 1
 }
-foreach state {8 9} {
-    case music_during_image_$state UpdateMusic [list wr 0xC000 $state] {
-        expect bass_volume [debug read {PSG regs} 8] 6; expect note [rd 0xC05B] 1
+foreach state {5 6 7 8 9} {
+    case music_during_image_$state UpdateMusic [list apply {{state} {wr 0xC000 $state; wr 0xC060 3}} $state] {
+        expect mode [rd 0xC0CB] 2
+        expect bass_volume [debug read {PSG regs} 8] 10
+        expect harmony_volume [debug read {PSG regs} 9] 6
+        expect lead_rest [debug read {PSG regs} 10] 0
+        expect pointer [expr {[rd 0xC0E5]+256*[rd 0xC0E6]}] [expr {$::sym(GoingHomeNotes)+7}]
+        expect bank_restored [debug read_block memory 0xA000 16] $::game_bank
     }
+}
+case ending_voices_play_together UpdateMusic {
+    wr 0xC000 6; wr 0xC0CB 2; wr 0xC05C 10
+    foreach {address value} {0xC0CC 144 0xC0CD 1 0xC0E7 44 0xC0E8 1 0xC05D 200 0xC05E 0} {wr $address $value}
+} {
+    foreach {register volume} {8 10 9 6 10 9} {expect volume_$register [debug read {PSG regs} $register] $volume}
+    foreach {register tone} {0 400 2 300 4 200} {
+        expect tone_$register [expr {[debug read {PSG regs} $register]+256*[debug read {PSG regs} [expr {$register+1}]]}] $tone
+    }
+    expect clock [rd 0xC05C] 9
+}
+foreach state {5 6 7 8 9} {
+    case ending_continuity_$state UpdateMusic [list apply {{state} {
+        wr 0xC000 $state; wr 0xC060 3; wr 0xC0CB 2; wr 0xC05C 20
+        wr 0xC0E5 77; wr 0xC0E6 165
+    }} $state] {
+        expect clock [rd 0xC05C] 19
+        expect pointer [expr {[rd 0xC0E5]+256*[rd 0xC0E6]}] 42317
+    }
+}
+foreach channel {0 1 2} {
+    case ending_yields_only_effect_channel_$channel UpdateMusic [list apply {{channel} {
+        wr 0xC000 6; wr 0xC0CB 2; wr 0xC05C 20
+        foreach {a v} {0xC0CC 144 0xC0CD 1 0xC0E7 44 0xC0E8 1 0xC05D 200 0xC05E 0} {wr $a $v}
+        wr [expr {0xC01C+$channel}] 3
+        debug write {PSG regs} [expr {8+$channel}] 12
+        set ::effect_channel $channel
+    }} $channel] {
+        foreach channel {0 1 2} volume {10 6 9} {
+            expect voice_$channel [debug read {PSG regs} [expr {8+$channel}]] [expr {$channel==$::effect_channel ? 12 : $volume}]
+        }
+        expect score_keeps_time [rd 0xC05C] 19
+    }
+}
+case ending_reaches_full_word_end_pointer UpdateMusic {
+    wr 0xC000 6; wr 0xC0CB 2
+    set last [expr {$::sym(GoingHomeNotesEnd)-7}]
+    wr 0xC0E5 [expr {$last&255}]; wr 0xC0E6 [expr {$last>>8}]
+} {
+    expect pointer [expr {[rd 0xC0E5]+256*[rd 0xC0E6]}] $::sym(GoingHomeNotesEnd)
+}
+case ending_stops_all_channels StopMusic {
+    wr 0xC0CB 2
+    foreach register {8 9 10} {debug write {PSG regs} $register 9}
+} {
+    foreach register {8 9 10} {expect silent_$register [debug read {PSG regs} $register] 0}
+    expect mode [rd 0xC0CB] 0
+    expect pointer [expr {[rd 0xC0E5]+256*[rd 0xC0E6]}] 0
 }
 case cheese_pair_spawn UpdateCane {wr 0xC000 4; wr 0xC060 3; wr 0xC068 0} {
     expect first [rd 0xC069] 1; expect second [rd 0xC0BB] 1
@@ -964,6 +1021,94 @@ case play_opens_clean_silent_prologue MenuTick {wr 0xC000 0; wr 0xC01A 1; keymat
     foreach channel {8 9 10} {expect silent_$channel [debug read {PSG regs} $channel] 0}
 }
 case garapa_stage_title ShowStageCard {wr 0xC060 1} {expect title [debug read_block VRAM 0x192C 8] "Garapa??"}
+case final_approach_keeps_scrolling UpdateScroll {
+    wr 0xC060 3; wr 0xC017 0; wr 0xC016 7
+    set f [open resources/generated/route3.bin rb]; fconfigure $f -translation binary
+    debug write_block memory 0xD000 [read $f 5120]; close $f
+    set ::first_row [debug read_block memory 0xD000 32]
+    set ::second_row [debug read_block memory 0xD020 32]
+    set ::first_bounds [debug read_block memory 0xE4A0 2]
+} {
+    expect road [rd 0xC000] 1; expect map_origin [rd 0xC017] 0; expect clock [rd 0xC016] 0
+    expect repeated_row [debug read_block memory 0xD020 32] $::first_row
+    expect scrolling_row [debug read_block memory 0xD040 32] $::second_row
+    expect collision_scroll [debug read_block memory 0xE4A2 2] $::first_bounds
+}
+case final_gate_enters_boss UpdateJourney {
+    wr 0xC060 3; wr 0xC017 0; wr 0xC004 120; wr 0xC005 80
+} {expect boss [rd 0xC000] 4}
+case final_approach_refuel_still_pauses UpdateScroll {
+    wr 0xC060 3; wr 0xC017 0; wr 0xC016 7; wr 0xC050 1
+} {expect clock [rd 0xC016] 7}
+case arena_cows_init InitBossCows {wr 0xC060 3} {
+    expect lane1 [rd 0xC022] 112; expect lane2 [rd 0xC02A] 152
+    expect delay [rd 0xC024] 30
+    expect patterns [debug read_block VRAM [expr {0x3800+32*8}] 512] [debug read_block memory [expr {$::sym(SpritePatterns)+32*8}] 512]
+}
+case arena_cows_enter UpdateBossCows {wr 0xC001 0; wr 0xC02C 20} {
+    expect cow [rd 0xC020] 1; expect from_left [rd 0xC021] 0
+}
+case arena_honk_speeds_cow UpdateBossCows {cow 100 112 1; wr 0xC001 0; wr 0xC02C 20} {
+    expect x [rd 0xC021] 102
+}
+proc arena_cow_setup {} {
+    wr 0xC000 4; wr 0xC060 3; wr 0xC005 112
+    cow 112 112
+    wr 0xC028 1; wr 0xC029 176; wr 0xC02A 152
+    foreach base {0xC069 0xC0BB 0xC0E1} {wr $base 1; wr [expr {$base+1}] 120}
+}
+proc arena_scanlines {} {
+    set counts [lrepeat 192 0]
+    for {set slot 0} {$slot<[rd 0xC040]} {incr slot} {
+        set y [expr {[rd [expr {0xC100+4*$slot}]]+1}]
+        for {set line $y} {$line<$y+16 && $line<192} {incr line} {lset counts $line [expr {[lindex $counts $line]+1}]}
+    }
+    if {[lindex [lsort -integer $counts] end]>8} {error "arena sprite overflow"}
+}
+case arena_cows_fit_with_three_cheeses BuildBossSprites {
+    arena_cow_setup
+    wr 0xC005 80
+    wr 0xC06B 144; wr 0xC0BD 160; wr 0xC0E3 144
+} {
+    expect slots [rd 0xC040] 29; expect visible [rd 0xC026] 1
+    arena_scanlines
+}
+case arena_cows_yield_to_projectiles BuildBossSprites {
+    arena_cow_setup
+    wr 0xC06B 80; wr 0xC0BD 112; wr 0xC0E3 112
+} {expect hidden [rd 0xC026] 0; arena_scanlines}
+case arena_hidden_cow_cannot_hit CheckHits {
+    wr 0xC000 4; wr 0xC060 3; cow 120 128
+} {expect lives [rd 0xC006] 5}
+case arena_visible_cow_hits CheckHits {
+    wr 0xC000 4; wr 0xC060 3; cow 120 128; wr 0xC026 1
+} {expect lives [rd 0xC006] 4}
+case final_gate_moves_with_scroll UpdateScroll {
+    wr 0xC060 3; wr 0xC017 0; wr 0xC016 7; wr 0xC005 160
+} {expect gate [rd 0xC0E9] 96; expect player_stays [rd 0xC005] 160}
+case final_gate_reaches_parked_car UpdateJourney {
+    wr 0xC060 3; wr 0xC017 0; wr 0xC005 160; wr 0xC004 144; wr 0xC0E9 160
+} {expect automatic_boss [rd 0xC000] 4}
+case final_gate_waits_until_contact UpdateJourney {
+    wr 0xC060 3; wr 0xC017 0; wr 0xC005 160; wr 0xC0E9 152
+} {expect still_scrolling [rd 0xC000] 1}
+foreach {position key next} {0 49 1 1 57 2 2 49 3} {
+    case secret_digit_$position AcceptSecretCharacter [list apply {{position key} {
+        wr 0xC0EA $position; reg A $key
+    }} $position $key] "expect progress \[rd 0xC0EA\] $next; expect hidden \[rd 0xC0EB\] 0"
+}
+case secret_code_unlocks AcceptSecretCharacter {wr 0xC0EA 3; reg A 52} {
+    expect unlocked [rd 0xC0EB] 1; expect first_choice [rd 0xC0EC] 0
+}
+case secret_wrong_digit_resets AcceptSecretCharacter {wr 0xC0EA 2; reg A 56} {
+    expect reset [rd 0xC0EA] 0; expect hidden [rd 0xC0EB] 0
+}
+case secret_right_wraps UpdateSecretSelection {wr 0xC0EC 6; keymatrixdown 8 128} {expect choice [rd 0xC0EC] 0}
+case secret_left_wraps UpdateSecretSelection {keymatrixdown 8 16} {expect choice [rd 0xC0EC] 6}
+case secret_arrow_does_not_repeat UpdateSecretSelection {wr 0xC0C3 1; wr 0xC0EC 3; keymatrixdown 8 128} {expect choice [rd 0xC0EC] 3}
+foreach {choice state stage} {0 13 0 1 1 1 2 12 1 3 1 2 4 1 3 5 4 3 6 8 3} {
+    case secret_launch_$choice LaunchSecretStage [list wr 0xC0EC $choice] "expect state \[rd 0xC000\] $state; expect stage \[rd 0xC060\] $stage; expect lives \[rd 0xC006\] 5"
+}
 set index -1
 set failures 0
 set reports {}
