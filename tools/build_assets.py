@@ -61,14 +61,15 @@ lower={
 'y':[0,0,0x63,0x63,0x3f,3,0x63,0x3e],
 'z':[0,0,0x7f,6,0x1c,0x30,0x7f,0]}
 for ch,rows in lower.items(): patterns[ord(ch)*8:ord(ch)*8+8]=bytes(rows)
-extras={47:[0x03,0x06,0x0c,0x18,0x30,0x60,0xc0,0],40:[0x0e,0x18,0x30,0x30,0x30,0x18,0x0e,0],
+extras={33:[0x18,0x18,0x18,0x18,0x18,0,0x18,0],47:[0x03,0x06,0x0c,0x18,0x30,0x60,0xc0,0],40:[0x0e,0x18,0x30,0x30,0x30,0x18,0x0e,0],
 41:[0x70,0x18,0x0c,0x0c,0x0c,0x18,0x70,0],
 44:[0,0,0,0,0,0x18,0x18,0x30],46:[0,0,0,0,0,0x18,0x18,0],
 240:[0,0x3e,0x63,0x60,0x63,0x3e,0x0c,0x18],
 241:[0x0c,0x18,0x3e,0x63,0x7f,0x60,0x3e,0],
 242:[0x0c,0x18,0x3e,0x63,0x63,0x63,0x3e,0],
 243:[0x18,0x24,0x3e,0x63,0x7f,0x60,0x3e,0],
-244:[0x3e,0x63,0x60,0x60,0x63,0x3e,0x0c,0x18]}
+244:[0x3e,0x63,0x60,0x60,0x63,0x3e,0x0c,0x18],
+245:[0x0c,0x18,0,0x38,0x18,0x18,0x3c,0]}
 for ch,rows in extras.items(): patterns[ch*8:ch*8+8]=bytes(rows)
 CREDIT_PARAGRAPHS=[
 'Essa foi a aventura de Argon, Gordinho (Leto) e Robson em sua jornada de Nova Iguaçu até Sebollas.',
@@ -86,7 +87,21 @@ for y,x,line in credit_rows:
 records.append(255)
 (OUT/'credits.inc').write_text('CreditLines:\n'+''.join('    db '+','.join(map(str,records[i:i+64]))+'\n' for i in range(0,len(records),64)))
 (OUT/'credits_text.json').write_text(json.dumps({'paragraphs':CREDIT_PARAGRAPHS,'rows':credit_rows},ensure_ascii=False,indent=2)+'\n')
-# Scenery and HUD tile IDs occupy 128..184.
+PROLOGUE_PARAGRAPHS=[
+'Em 1991, três amigos resolveram visitar Sebollas. Este jogo conta a história da saga de Argon, Robson e Wellington durante essa aventura.',
+'Foi mais ou menos assim...']
+prologue_rows=[]; row=5
+for paragraph in PROLOGUE_PARAGRAPHS:
+    for line in textwrap.wrap(paragraph,28):
+        prologue_rows.append((row,(32-len(line))//2,line)); row+=1
+    row+=2
+records=[]
+for y,x,line in prologue_rows:
+    records.extend([y,x]+[{'ê':243,**encoding}.get(ch,ord(ch)) for ch in line]+[0])
+records.append(255)
+(OUT/'prologue.inc').write_text(''.join('    db '+','.join(map(str,records[i:i+64]))+'\n' for i in range(0,len(records),64)))
+(OUT/'prologue_text.json').write_text(json.dumps({'paragraphs':PROLOGUE_PARAGRAPHS,'rows':prologue_rows},ensure_ascii=False,indent=2)+'\n')
+# Scenery uses free tile IDs; the cane arena swaps 186..201 temporarily.
 tiles={}
 def tile(idx,bg,fg,rows):
     bg={6:13,13:1}.get(bg,bg)
@@ -94,10 +109,12 @@ def tile(idx,bg,fg,rows):
     patterns[idx*8:idx*8+8]=bytes(rows)
     colors[idx*8:idx*8+8]=bytes([fg*16+bg]*8)
     tiles[idx]=[bg,fg]
-tile(128,3,2,[0,0x20,0,0,2,0,0x40,0]) # pasture
-tile(129,3,12,[0,0x18,0x24,0,0,0x42,0x24,0])
+tile(128,3,2,[0,0x10,0x28,0x10,0,2,5,2]) # tufts of pasture grass
+tile(129,3,12,[0,0x48,0x54,0x10,0,0x02,0x15,0x08])
 tile(130,6,7,[0,0,0x20,0,0,2,0,0]) # packed dirt
-tile(131,6,13,[0x18,0x18,0x10,0x18,0x18,8,0x18,0x18]) # tyre track
+tile(131,6,14,[0,0x3c,0x7e,0xfe,0xff,0x7e,0x3c,0]) # large rounded road stone
+colors[131*8+1]=0xfd # highlights on the gray stones, over brown dirt
+colors[131*8+2]=0xfd
 tile(132,3,6,[3,3,7,7,7,15,7,3]) # shoulder left
 tile(133,3,6,[192,192,224,224,224,240,224,192])
 tile(134,3,7,[0x18,0x18,0xff,0x18,0x18,0xff,0x18,0x18]) # fence
@@ -126,12 +143,48 @@ tile(156,3,15,[0x80,0xc0,0x60,0x30,0x10,0x10,0x70,0x60])
 tile(157,14,15,[0,0,0,0,0,0,0,0xff]) # forecourt / driveway
 tile(158,3,15,[0x18,0x18,0x18,0x18,0x18,0x18,0x18,0x18])
 tile(159,7,1,[0xff,0,0,0,0xff,0,0,0]) # wooden fishing deck
-# River Raid style gauge: an outlined track with a sliding needle, E to F.
+tile(160,3,2,[0,0x07,0x1f,0x3f,0x7d,0x3f,0x1a,0]) # shrub, left/right
+tile(161,3,12,[0,0xe0,0xf8,0xfc,0xbe,0xfc,0x58,0])
+tile(162,3,15,[0,0x10,0x38,0x10,0x10,0x28,0x10,0]) # wildflowers
+for row,fg in ((3,10),(4,2),(5,2),(6,2)): colors[162*8+row]=fg*16+3
+tile(163,4,3,[0x22,0x36,0x22,0x22,0x6a,0x26,0x22,0]) # reeds on the water
+tile(164,3,14,[0,0,0x0c,0x1e,0x0c,0,0x60,0xf0]) # field stones
+tile(165,3,12,[0,0x44,0xaa,0x44,0,0x11,0x2a,0x11]) # planted green patches
+
+# Broad 24x24 trees: native two-color tile rows, shaded foliage and a trunk.
+TREE_TILES=(186,187,188,189,190,191,192,194,195) # leave the VAVÁ glyph intact
+tree=image(24,24,3);td=ImageDraw.Draw(tree)
+td.rectangle((9,12,13,23),fill=13)
+td.line((11,16,11,22),fill=7)
+td.polygon([(8,0),(15,0),(15,2),(19,2),(19,5),(22,5),(22,13),
+            (19,13),(19,17),(14,17),(14,19),(7,19),(7,17),(2,17),
+            (2,14),(0,14),(0,7),(3,7),(3,3),(8,3)],fill=2)
+td.polygon([(8,2),(14,2),(14,4),(18,4),(18,7),(20,7),(20,12),
+            (16,12),(16,15),(11,15),(11,17),(6,16),(6,13),(3,13),
+            (3,8),(6,8),(6,5),(8,5)],fill=12)
+for x,y in ((9,3),(6,6),(14,5),(16,9),(7,11),(11,13),(4,9)):
+    td.line((x,y,x+1,y),fill=3)
+for q,idx in enumerate(TREE_TILES):
+    xx,yy=q%3*8,q//3*8
+    for y in range(8):
+        values=[tree.getpixel((xx+x,yy+y)) for x in range(8)]
+        common=[v for v,n in Counter(values).most_common(2)]
+        if len(common)==1: common.append(common[0])
+        bg,fg=common
+        chosen=[min(common,key=lambda c:sum((u-v)**2 for u,v in zip(PALETTES[0][color],PALETTES[0][c]))) for color in values]
+        patterns[idx*8+y]=sum(128>>x for x,color in enumerate(chosen) if color==fg)
+        colors[idx*8+y]=fg*16+bg
+    tiles[idx]=[3,2]
+# Closed track with a sliding needle, without E/F lettering.
+tile(166,1,14,[0,0x3f,0x20,0x20,0x20,0x20,0x3f,0])
+tile(167,1,14,[0,0xfc,0x04,0x04,0x04,0x04,0xfc,0])
 tile(168,1,14,[0,0xff,0,0,0,0,0xff,0])
 for x in range(8):
     mask=128>>x
     tile(169+x,1,15,[mask,0xff,mask,mask,mask,mask,0xff,mask])
     tile(177+x,1,8,[mask,0xff,mask,mask,mask,mask,0xff,mask])
+tile(184,6,11,[0x18,0x18,0x18,0x18,0x18,0,0x18,0x18])
+tile(185,6,11,[0x18,0x18,0x18,0,0x18,0x18,0x18,0x18])
 # Side-view bus for the final chase, 8x4 background tiles.
 bus=image(64,32,14);d=ImageDraw.Draw(bus)
 d.rounded_rectangle((0,0,63,27),radius=3,fill=1)
@@ -171,22 +224,38 @@ def make_route(stage):
         if stage==3: left,right=12+shift,19+shift
         if stage==1: left,right=11+shift,20+shift
         if stage==0: left,right=9+shift,22+shift
+        if stage==2 and y<30:
+            # A centered approach ends at the bar, with no side passage.
+            half=min(4,max(0,(y-12)//4))
+            left,right=15-half,16+half
         centers.append(((left+right)//2)*8)
         river=33<=y<=40 or 83<=y<=90
         row=[]
         for x in range(32):
-            t=128 if (x*7+y*3)%5 else 129
+            t=129 if (x//3*3+y//5+stage)%4==0 else 128
+            if (x*13+y*7)%41==0: t=162
+            elif (x+2*y)%43==0: t=164
+            elif (x//4+y//7+stage)%9==0: t=165
             if river:
                 t=146 if left<=x<=right else 147 if x in (left-1,right+1) else 145
-            elif left<=x<=right: t=131 if x in (left+3,right-3) else 130
+                if t==145 and y in (33,40,83,90) and x%4==2: t=163
+            elif left<=x<=right:
+                t=131 if ((x+1)*(y+13)*19+y*y*7+stage*31)%37<5 else 130
             elif x==left-1: t=132
             elif x==right+1: t=133
             elif x in (left-3,right+3): t=134
-            elif x in (2,29) and y%8 in (0,1): t=135 if y%8==0 else 137
-            elif x in (1,3,28,30) and y%8==0: t=136
             elif (x+y*5)%37==0: t=138
             row.append(t)
         world.append(row)
+    plain=(128,129,138,160,161,162,164,165)
+    for side,offset in ((0,5+stage),(29,11+stage)):
+        for top in range(offset,157,12):
+            if all(world[top+dy][side+dx] in plain for dy in range(3) for dx in range(3)):
+                for dy in range(3): world[top+dy][side:side+3]=TREE_TILES[dy*3:dy*3+3]
+    for y in range(4,158,7):
+        for x in (3,26):
+            if all(world[y][x+dx] in plain for dx in range(2)):
+                world[y][x:x+2]=[160,161]
     def label(y,x,text): world[y][x:x+len(text)]=map(ord,text)
     def house(y,x,name):
         if name: label(y-1,x,name)
@@ -220,6 +289,9 @@ def make_route(stage):
     road_bounds=[]
     for y,row in enumerate(world):
         columns=[x for x,t in enumerate(row) if t in (130,131,146,157,159)]
+        if stage==2 and y<7:
+            road_bounds.extend((120,120))
+            continue
         middle=min(columns,key=lambda x:abs(x-centers[y]//8))
         left=right=middle
         while left>0 and row[left-1] in (130,131,146,157,159): left-=1
@@ -286,13 +358,25 @@ for frame in range(4):
     add_mask(im,[{7}]*16,[7]*16)
 metadata['cheese']=len(sprites)
 for frame in range(2):
-    # Unset mask bits are transparent, including the contour and cheese holes.
+    # A rounded wheel with a pale upper rim, depth and rotating clear holes.
+    # One hardware sprite per frame preserves the scanline budget.
     im=image(16,16);d=ImageDraw.Draw(im)
-    d.ellipse((1,1,14,14),fill=10)
-    for x,y in ((5,4),(10,7),(6,11)):
-        if frame: x,y=15-y,x
+    d.ellipse((1,3,14,14),fill=10)
+    d.ellipse((1,1,14,11),fill=10)
+    for x,y in ((5,4),(10,6),(6,9)):
+        if frame: x,y=14-y,x
         d.rectangle((x,y,x+1,y+1),fill=0)
-    add_mask(im,[{10}]*16,[10]*16)
+    d.point((1,10),fill=0);d.point((14,10),fill=0)
+    line_colors=[11 if 1<=y<=9 else 10 for y in range(16)]
+    add_mask(im,[{10}]*16,line_colors)
+    levels=(0,43,81,118,153,187,221,255)
+    preview=Image.new('RGBA',(16,16))
+    for y in range(16):
+        color=tuple(levels[c] for c in PALETTES[0][line_colors[y]])+(255,)
+        for x in range(16):
+            if im.getpixel((x,y)): preview.putpixel((x,y),color)
+    preview.save(ROOT/f'previews/round-cheese-{frame}.png')
+    preview.resize((256,256),Image.NEAREST).save(ROOT/f'previews/round-cheese-{frame}-16x.png')
 def add_person(im):
     for yy in (0,16):
         part=im.crop((0,yy,16,yy+16))
@@ -395,7 +479,7 @@ assert len(sprites)<=64
 (OUT/'sprite_colors.bin').write_bytes(b''.join(s[1] for s in sprites))
 for i,pal in enumerate(PALETTES):
     (OUT/f'palette{i}.bin').write_bytes(bytes(v for r,g,b in pal for v in ((r<<4)|b,g)))
-metadata.update(world_rows=WORLD_ROWS, start_row=138, stations=[54,110], rivers=[[33,40],[83,90]], road_centers=centers, sprite_count=len(sprites),palettes=PALETTES,font_chars=chars,extra_font_chars=[63,193]+list(range(97,123))+list(extras))
+metadata.update(world_rows=WORLD_ROWS, start_row=138, stations=[54,110], rivers=[[33,40],[83,90]], road_centers=centers, sprite_count=len(sprites),palettes=PALETTES,font_chars=chars,extra_font_chars=[63,193]+list(range(97,123))+list(extras),scenery_tiles=sorted(tiles))
 (OUT/'manifest.json').write_text(json.dumps(metadata,indent=2)+'\n')
 (OUT/'assets.inc').write_text('\n'.join(f'{k.upper()}_PATTERN equ {v*4}' for k,v in metadata.items() if k in ('car','cow','dust','cheese','boss','cane','runner_small','runner_tall','runner_fat'))+'\nSPRITE_BYTES equ '+str(len(sprites)*32)+'\n')
 print(f'Assets: {len(sprites)} sprite patterns, 160x32 route, original 39-glyph font')
@@ -421,19 +505,35 @@ add_reference_person('trio-reference.png',(32,32),0,'trio-sprite')
 (OUT/'trio_colors.bin').write_bytes(b''.join(c for p,c in sprites[base:]))
 del sprites[base:]
 
-# Compact arena cows reuse the four dust patterns in the walking encounter.
+# The full-size donkey replaces the walking stages' dogs, in both directions.
+source=Image.open(ROOT/'resources/donkey-reference.png').convert('RGBA')
+source=source.crop(source.getchannel('A').point(lambda v:255 if v>=128 else 0).getbbox())
+source=source.resize((32,32),Image.NEAREST)
 base=len(sprites)
 for direction in (0,1):
-    source=Image.open(ROOT/'resources/cow-reference.png').convert('RGBA')
-    source=source.crop(source.getbbox()).resize((16,12),Image.NEAREST)
-    if direction: source=source.transpose(Image.FLIP_LEFT_RIGHT)
-    im=image(16,16)
-    for y in range(12):
-        for x in range(16):
-            r,g,b,alpha=source.getpixel((x,y))
-            if alpha: im.putpixel((x,y+2),9 if r>200 and g<200 else 15 if r>200 else 1)
-    add_mask(im,[{1,15}]*16,[6]*16)
-    add_mask(im,[{9,15}]*16,[0x40|9]*16)
-(OUT/'small_cow_patterns.bin').write_bytes(b''.join(p for p,c in sprites[base:]))
-(OUT/'small_cow_colors.bin').write_bytes(b''.join(c for p,c in sprites[base:]))
+    pose=source if direction==0 else source.transpose(Image.FLIP_LEFT_RIGHT)
+    add_reference_person('',(32,32),0,f'donkey-{direction}',source_image=pose,palette_override=PALETTES[0],fixed_pair=(1,14))
+(OUT/'donkey_patterns.bin').write_bytes(b''.join(p for p,c in sprites[base:]))
+(OUT/'donkey_colors.bin').write_bytes(b''.join(c for p,c in sprites[base:]))
 del sprites[base:]
+
+# Garapa is a tile actor in the collection arena, leaving all 32 sprite slots
+# for the trio and three full-size, multicolor donkeys.
+garapa=Image.open(ROOT/'resources/garapa-reference.png').convert('RGBA').resize((20,32),Image.NEAREST)
+canvas=Image.new('RGBA',(32,32));canvas.paste(garapa,(6,0))
+levels=(0,43,81,118,153,187,221,255)
+pal=[tuple(levels[c] for c in color) for color in PALETTES[0]]
+bg_patterns=bytearray();bg_colors=bytearray()
+for yy in range(0,32,8):
+    for xx in range(0,32,8):
+        for y in range(8):
+            pixels=[canvas.getpixel((xx+x,yy+y)) for x in range(8)]
+            colors_for_row=[min(range(1,16),key=lambda c:sum((u-v)**2 for u,v in zip(pixel[:3],pal[c]))) if pixel[3]>=128 else 13 for pixel in pixels]
+            common=[c for c,n in Counter(colors_for_row).most_common(2)]
+            if len(common)==1: common.append(common[0])
+            bg,fg=common
+            chosen=[min(common,key=lambda c:sum((u-v)**2 for u,v in zip(pal[color],pal[c]))) for color in colors_for_row]
+            bg_patterns.append(sum(128>>x for x,color in enumerate(chosen) if color==fg))
+            bg_colors.append(fg*16+bg)
+(OUT/'garapa_tile_patterns.bin').write_bytes(bg_patterns)
+(OUT/'garapa_tile_colors.bin').write_bytes(bg_colors)

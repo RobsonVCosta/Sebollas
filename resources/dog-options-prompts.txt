@@ -1,0 +1,13 @@
+Generated with the built-in image_gen tool. Both sources retain transparency.
+
+Option 1: brown mongrel, floppy ears, cream chest/muzzle, raised tail and pink
+tongue. Right-facing full-body side profile, retro MSX2 pixel-art sprite,
+32x32 logical grid, hard square edges, few flat colors. Transparent background;
+no ground, shadows, text, labels, checkerboard or decorative scene.
+
+Option 2: black-and-white spotted dog, pointed ears, curved upright tail and
+pink tongue. Right-facing full-body side profile, retro MSX2 pixel-art sprite,
+32x32 logical grid, hard square edges, few flat colors. Transparent background;
+no ground, shadows, text, labels, checkerboard or decorative scene.
+
+Exact generation prompts are saved in dog-options-prompts.json.

@@ -14,7 +14,7 @@ proc scene {row x y fuel filling {arrived 0}} {
     }
     # A RAM trampoline calls ROM routines, then HALTs with BIOS IRQs enabled.
     set cursor 0xCFC0
-    set routines {SetupGameVideo LoadStageMap ApplyStagePalette DrawWorld DrawHUD BuildSprites UploadSprites}
+    set routines {SetupGameVideo LoadStageMap ApplyStagePalette ClearArena DrawWorld DrawHUD BuildSprites UploadSprites}
     if {$arrived} {
         debug write memory 0xC000 1
         lappend routines CompleteStage

@@ -1,0 +1,43 @@
+{
+  "paragraphs": [
+    "Em 1991, três amigos resolveram visitar Sebollas. Este jogo conta a história da saga de Argon, Robson e Wellington durante essa aventura.",
+    "Foi mais ou menos assim..."
+  ],
+  "rows": [
+    [
+      5,
+      6,
+      "Em 1991, três amigos"
+    ],
+    [
+      6,
+      2,
+      "resolveram visitar Sebollas."
+    ],
+    [
+      7,
+      3,
+      "Este jogo conta a história"
+    ],
+    [
+      8,
+      3,
+      "da saga de Argon, Robson e"
+    ],
+    [
+      9,
+      4,
+      "Wellington durante essa"
+    ],
+    [
+      10,
+      11,
+      "aventura."
+    ],
+    [
+      13,
+      3,
+      "Foi mais ou menos assim..."
+    ]
+  ]
+}

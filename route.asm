@@ -258,6 +258,14 @@ ClampCarToRoad:
     ld a,80
     ld (_carY),a
 .arenaX:
+    ld a,(_state)
+    cp 12
+    jr nz,.carArena
+    ld a,16
+    ld (_roadMinX),a
+    ld a,240
+    jr .arenaLimit
+.carArena:
     ld a,64
     ld (_roadMinX),a
     ld a,(_carY)

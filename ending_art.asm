@@ -1,4 +1,4 @@
-; Timed, unskippable illustrations between the bus chase and the credits.
+; Timed, unskippable illustrations before the car arrival and bus chase.
 ; The main loop supplies 50 ticks per second in both PAL and NTSC.
 BeginEndingArt:
     ld a,8
@@ -19,7 +19,10 @@ EndingArtTick:
     ret nz
     ld a,(_state)
     cp 9
-    jp z,ShowCredits
+    jp z,BeginEnding
+    jp BeginSecondEndingArt
+
+BeginSecondEndingArt:
     ld a,9
     ld (_state),a
     ; Illustration 2 starts at physical ROM bank 16 (offset 20000h).

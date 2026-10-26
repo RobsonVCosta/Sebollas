@@ -10,6 +10,8 @@ InitVarsAtRAM:
     ret
 
 ResetGame:
+    ld a,5
+    ld (_lives),a
     call SetupGameVideo
     xor a
     ld (_cheeseCount),a
@@ -23,7 +25,7 @@ ResetGame:
     djnz .score
     xor a
     ld (_stage),a
-    jp ShowStageCard
+    jp BeginPrologue
 
 BeginStage:
     call SetupGameVideo
@@ -71,20 +73,12 @@ BeginStage:
 .position:
     ld a,128
     ld (_carY),a
-    ld a,5
-    ld (_lives),a
     ld a,48
     ld (_cheeseClock),a
     ld a,138
     ld (_mapRow),a
     ld a,100
     ld (_fuel),a
-    ld a,(_stage)
-    or a
-    jr z,.video
-    ld a,1
-    ld (_driveStarted),a
-    ld (_driveArmed),a
 .video:
     call ApplyStagePalette
     ld hl,NAMTBL

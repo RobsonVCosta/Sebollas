@@ -9,12 +9,12 @@ for bank in range(3):
     assert v[bank*2048:(bank+1)*2048]==p,f'pattern bank {bank}'
     assert v[0x2000+bank*2048:0x2000+(bank+1)*2048]==c,f'color bank {bank}'
 s=(d/'sprites.bin').read_bytes()
-expected_sprites=(d/'trio_patterns.bin').read_bytes()+s[256:]
+expected_sprites=(d/'trio_patterns.bin').read_bytes()+(d/'donkey_patterns.bin').read_bytes()+s[768:]
 assert v[0x3800:0x3800+len(s)]==expected_sprites
 assert (d/'capture-palette.bin').read_bytes()==(d/'palette0.bin').read_bytes()
 assert v[0x1801:0x1806]==b'SCORE'
 assert bytes(v[a] for a in (0x181b,0x181c,0x181d,0x181e,0x181f))==bytes([140]*5)
-assert all(t==193 or t in range(32,91) or 128<=t<=167 for t in v[0x1840:0x1b00])
+assert all(t==193 or t in range(32,91) or 128<=t<=199 for t in v[0x1840:0x1b00])
 assert v[0x1821:0x1825]==b'FOME'
 assert v[0x1840-10:0x1840]==b'          '
 print('Captured V9938: 3 pattern/color banks, sprite patterns, palette and fixed HUD match ROM assets')
@@ -36,7 +36,7 @@ for y in range(16):
     for x in range(16):
         bits=s[pattern*32+(16 if x>=8 else 0)+y]
         if bits&(128>>(x%8)):
-            color=10
+            color=(d/'sprite_colors.bin').read_bytes()[pattern*16+y]&15
         else:
             px,py=144+x,96+y
             tile=world[(76+(py-16)//8)*32+px//8]

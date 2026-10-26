@@ -45,7 +45,15 @@ PlayEffect:
     add hl,de
     ld (hl),c
     ret
+; Restore the normal mixer after each one-tick typewriter noise burst.
 UpdateSound:
+    ld a,(_state)
+    cp 13
+    jr nz,.effects
+    ld a,7
+    ld e,0B8h
+    call Psg_write
+.effects:
     ld hl,_effectTime
     ld b,3
     ld c,8
@@ -321,3 +329,21 @@ SoundBonusDone:
     ld hl,170
     ld bc,010Ah
     jp PlayEffect
+
+; Brief mechanical clack: noise on channel A, with a small timbre variation.
+SoundTypewriter:
+    ld a,(_tick)
+    and 3
+    add a,3
+    ld e,a
+    ld a,6
+    call Psg_write
+    ld a,7
+    ld e,0B1h ; noise A enabled, tone A disabled
+    call Psg_write
+    ld a,8
+    ld e,11
+    call Psg_write
+    ld a,1
+    ld (_effectTime),a
+    ret

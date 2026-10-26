@@ -27,6 +27,7 @@ BeginCheeseBonus:
     ld (_cows+8),a
     ld (_cows+16),a
     ld (_caneActive),a
+    ld (_secondCheese),a
     ld (_bonusDone),a
     ld (_bonusSoundStep),a
     ld (_bonusBCD),a
@@ -40,15 +41,8 @@ BeginCheeseBonus:
     ld bc,768
     ld a,32
     call FILVRM
-    ld de,StageLabel
-    ld bc,0308h
-    call PutText
-    ld a,(_stage)
-    add a,'0'
-    ld hl,NAMTBL+3*32+13
-    call WRTVRM
-    ld de,LevelDoneLabel
-    ld bc,030Fh
+    ld de,StageDoneText
+    ld bc,0309h
     call PutText
     ld de,ScoreLabel
     ld bc,0707h
@@ -81,7 +75,7 @@ CheeseBonusTick:
     ret nz
     ld a,(_stage)
     cp 3
-    jp z,BeginEnding
+    jp z,BeginEndingArt
     jp AdvanceStage
 .count:
     ld a,(_bonusClock)
@@ -154,7 +148,7 @@ DrawBonusNumbers:
     ld bc,0D10h
     jp PutText
 
-LevelDoneLabel: db "CONCLUIDA",0
+StageDoneText: db "Fase conclu",245,"da",0
 BonusLabel: db "BONUS",0
 BonusRateLabel: db "100 PONTOS POR QUEIJO",0
 

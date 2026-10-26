@@ -37,8 +37,8 @@ def render(style=0, map_row=76, with_sprites=True):
         tilemap.extend(world[start:start+32])
     def text(row,col,s):
         for i,c in enumerate(s): tilemap[row*32+col+i]=ord(c)
-    text(0,1,'SCORE 00001200');text(0,29,chr(140)*3)
-    text(1,1,'GAS E'+chr(168)*6+chr(173)+chr(168)*3+'F')
+    text(0,1,'SCORE 00001200');text(0,27,chr(140)*5)
+    text(1,1,'GAS  '+chr(166)+chr(168)*6+chr(173)+chr(168)*3+chr(167))
     text(1,22,'QUEIJOS 03')
     for ty in range(24):
         for tx in range(32):

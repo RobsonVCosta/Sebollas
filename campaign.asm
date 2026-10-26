@@ -6,21 +6,12 @@ CheckDriveStart:
     xor a
     call GTSTCK
     or a
-    jr nz,.go
-    xor a
-    call GTTRIG
-    or a
-    jr z,.arm
-    ld a,(_driveArmed)
-    or a
     ret z
-.go:
     ld a,1
     ld (_driveStarted),a
-    jp DrawWorld
-.arm:
-    ld a,1
-    ld (_driveArmed),a
+    ld a,(_state)
+    cp 1
+    jp z,DrawWorld
     ret
 
 ApplyStagePalette:
@@ -91,6 +82,15 @@ ShowStageCard:
     ld bc,090Bh
     jp PutText
 .numbered:
+    cp 2
+    jr nz,.stageNumber
+    ld de,GrandmaTitle
+    ld bc,080Ch
+    call PutText
+    ld de,HonkInstruction
+    ld bc,0B02h
+    jp PutText
+.stageNumber:
     ld de,StageLabel
     ld bc,090Ch
     call PutText
@@ -101,6 +101,8 @@ ShowStageCard:
 
 CampaignTick:
     ld a,(_state)
+    cp 13
+    jp z,PrologueTick
     cp 3
     jr z,.stage
     cp 4
@@ -136,7 +138,7 @@ DrawStageHUD:
     call FILVRM
     ld a,(_state)
     cp 12
-    ret z
+    jp z,DrawGarapaPhrase
     cp 4
     jr z,.boss
     ld a,(_refueling)
@@ -182,6 +184,19 @@ ClearArena:
     push bc
     push hl
     ld bc,16
+    ld a,(_state)
+    cp 12
+    jr nz,.roadSize
+    pop hl
+    push hl
+    ld a,l
+    sub 6
+    ld l,a
+    jr nc,.wide
+    dec h
+.wide:
+    ld bc,28
+.roadSize:
     ld a,130
     call FILVRM
     pop hl
@@ -204,8 +219,6 @@ BeginBoss:
     ld (_carX),a
     ld a,136
     ld (_carY),a
-    ld a,5
-    ld (_lives),a
     ld a,24
     ld (_throwClock),a
     xor a
@@ -213,6 +226,7 @@ BeginBoss:
     ld (_bossDefeat),a
     ld (_bossFlash),a
     ld (_caneActive),a
+    ld (_secondCheese),a
     ld (_cows),a
     ld (_cows+8),a
     ld (_cows+16),a
@@ -224,6 +238,7 @@ BeginBoss:
     ld (_effectTime),a
     ld (_effectTime+1),a
     ld (_effectTime+2),a
+    ld (_driveStarted),a
     call InitSound
     xor a
     ld (_musicStep),a
@@ -249,6 +264,10 @@ BeginBoss:
     jp UploadSprites
 
 BossTick:
+    call CheckDriveStart
+    ld a,(_driveStarted)
+    or a
+    ret z
     ld a,(_bossDefeat)
     or a
     jp nz,BossDefeatTick
@@ -348,6 +367,7 @@ BossTakeHit:
     ld (_bossDefeat),a
     xor a
     ld (_caneActive),a
+    ld (_secondCheese),a
     ld (_hornPhase),a
     ld (_hornClock),a
     ld a,75
@@ -376,8 +396,10 @@ BossDefeatTick:
 
 UpdateCane:
     ld a,(_caneActive)
-    or a
-    jr nz,.fly
+    ld b,a
+    ld a,(_secondCheese)
+    or b
+    jr nz,.advance
     ld a,(_throwClock)
     or a
     jr z,.throw
@@ -393,7 +415,35 @@ UpdateCane:
     ld (_caneY),a
     ld a,(_carX)
     ld (_caneTarget),a
+    ld a,(_stage)
+    cp 3
+    ret nz
+    ld a,1
+    ld (_secondCheese),a
+    ld a,(_bossX)
+    sub 10
+    ld (_caneX),a
+    add a,20
+    ld (_secondCheese+1),a
+    ld a,64
+    ld (_secondCheese+2),a
+    ld a,(_carX)
+    sub 12
+    ld (_caneTarget),a
+    add a,24
+    ld (_secondCheese+3),a
     ret
+.advance:
+    ld ix,_caneActive
+    call MoveBossProjectile
+    ld a,(_state)
+    cp 4
+    ret nz
+    ld ix,_secondCheese
+MoveBossProjectile:
+    ld a,(ix+0)
+    or a
+    ret z
 .fly:
     ld a,(_stage)
     cp 3
@@ -401,17 +451,17 @@ UpdateCane:
     jr nz,.speed
     inc b
 .speed:
-    ld a,(_caneY)
+    ld a,(ix+2)
     add a,b
     cp 184
     jr nc,.remove
-    ld (_caneY),a
+    ld (ix+2),a
     ld a,(_tick)
     and 3
     jr nz,.hit
-    ld a,(_caneTarget)
+    ld a,(ix+3)
     ld b,a
-    ld a,(_caneX)
+    ld a,(ix+1)
     cp b
     jr z,.hit
     jr c,.right
@@ -420,19 +470,19 @@ UpdateCane:
 .right:
     add a,2
 .x:
-    ld (_caneX),a
+    ld (ix+1),a
 .hit:
     ld a,(_invulnerable)
     or a
     ret nz
-    ld a,(_caneX)
+    ld a,(ix+1)
     ld b,a
     ld a,(_carX)
     sub b
     add a,10
     cp 24
     ret nc
-    ld a,(_caneY)
+    ld a,(ix+2)
     ld b,a
     ld a,(_carY)
     sub b
@@ -443,7 +493,7 @@ UpdateCane:
     jp LoseLife
 .remove:
     xor a
-    ld (_caneActive),a
+    ld (ix+0),a
     ld a,24
     ld (_throwClock),a
     ret
@@ -468,6 +518,9 @@ DrawPerson:
 
 BuildBossSprites:
     call BuildSprites
+    ld a,(_state)
+    cp 12
+    jp z,DrawFriendlyActors
     ld a,(_bossFlash)
     and 2
     jr nz,.cane
@@ -479,34 +532,22 @@ BuildBossSprites:
     ld a,BOSS_PATTERN/4
     call DrawLargeSprite
 .cane:
-    ld a,(_caneActive)
+    ld ix,_caneActive
+    call DrawBossProjectile
+    ld ix,_secondCheese
+DrawBossProjectile:
+    ld a,(ix+0)
     or a
     ret z
-    ld a,(_caneX)
-    ld e,a
-    ld a,(_caneY)
-    ld d,a
-    ld a,(_stage)
-    cp 3
-    jr nz,.caneFrame
+    ld e,(ix+1)
+    ld d,(ix+2)
     ld a,CANE_PATTERN/4
     call AppendSprite
     inc a
     jp AppendSprite
-.caneFrame:
-    ld a,(_tick)
-    rrca
-    rrca
-    and 1
-    add a,CANE_PATTERN/4
-    ld b,a
-    ld a,(_state)
-    cp 12
-    ld a,b
-    jp z,AppendWalkingCane
-    jp AppendSprite
 
 BeginEnding:
+    call SetupGameVideo
     ld a,5
     ld (_state),a
     xor a
@@ -514,6 +555,7 @@ BeginEnding:
     ld (_endingClock),a
     ld (_endingClock+1),a
     ld (_caneActive),a
+    ld (_secondCheese),a
     ld (_cows),a
     ld (_cows+8),a
     ld (_cows+16),a
@@ -535,12 +577,8 @@ BeginEnding:
     ld (_runnerSmallX),a
     ld (_runnerTallX),a
     ld (_runnerFatX),a
-    call InitSound
     call ApplyStagePalette ; restore road/runner colors after the cheese boss
     call ClearArena
-    ld de,VictoryText
-    ld bc,0307h
-    call PutText
     ld de,BusDestination
     ld bc,0604h
     call PutText
@@ -634,9 +672,6 @@ EndingTick:
     ld (_endingPhase),a
     ld hl,80
     ld (_stageTimer),hl
-    ld de,CaughtBusText
-    ld bc,0806h
-    call PutText
 .draw:
     call BuildEndingSprites
     jp UploadSprites
@@ -657,7 +692,7 @@ EndingTick:
     ld (_stageTimer),hl
     ld a,h
     or l
-    jp z,BeginEndingArt
+    jp z,ShowCredits
     jp .draw
 
 AdvanceRunner:
@@ -767,6 +802,43 @@ BuildEndingSprites:
     ld d,96
     jp DrawPerson
 
+ ; Story prologue uses the same letter renderer and font as the credits.
+BeginPrologue:
+    ld a,13
+    ld (_state),a
+    call InitSound
+    call StopMusic
+    xor a
+    ld (_introDone),a
+    ld (_hornPhase),a
+    ld (_effectTime),a
+    ld (_effectTime+1),a
+    ld (_effectTime+2),a
+    call HideSprites
+    ld hl,NAMTBL
+    ld bc,768
+    ld a,32
+    call FILVRM
+    ld hl,PrologueSequence
+    ld (_creditNext),hl
+    ld hl,0
+    ld (_creditDest),hl
+    xor a
+    ld (_creditClock),a
+    ret
+
+PrologueTick:
+    ld a,(_introDone)
+    or a
+    jp z,RevealCreditLetter
+    ld hl,(_stageTimer)
+    dec hl
+    ld (_stageTimer),hl
+    ld a,h
+    or l
+    ret nz
+    jp ShowStageCard
+
 ShowCredits:
     call SetupGameVideo ; restore tiles, palette and banks after SCREEN 8
     ld a,6
@@ -807,7 +879,16 @@ RevealCreditLetter:
 .line:
     ld a,(hl)
     cp 255
-    ret z
+    jr nz,.row
+    ld a,(_state)
+    cp 13
+    ret nz
+    ld a,1
+    ld (_introDone),a
+    ld hl,250 ; five seconds to read the complete introduction
+    ld (_stageTimer),hl
+    ret
+.row:
     ld e,a
     ld d,0
     inc hl
@@ -842,19 +923,25 @@ RevealCreditLetter:
     ld (_creditDest),hl
     ld a,1
     ld (_creditClock),a
+    ld a,(_state)
+    cp 13
+    jp z,SoundTypewriter
     ret
+
+PrologueSequence:
+    include "resources/generated/prologue.inc"
 
 StageLabel: db "FASE ",0
 FinalStageText: db "FASE FINAL",0
+GrandmaTitle: db "Vov",242,"!!!",0
+HonkInstruction: db "Buzine para espantar as vacas",0
 MoreCowsText: db "MAIS VACAS NA ESTRADA",0
 GarapaText: db "GAROTO DA GARAPA",0
 CheeseManText: db "HOMEM DO QUEIJO",0
 CheeseManPhrase: db "Experimentem meu queijo",0
 BossHPLabel: db "HP ",0
 StationHUD: db "POSTO",0
-VictoryText: db "VENCEMOS O QUEIJO!",0
 BusDestination: db "ONIBUS PARA NOVA IGUA",244,"U",0
-CaughtBusText: db "PEGAMOS O ONIBUS!",0
 BusTileMap: db "N.IGUA",244,"U",208,209,210,211,212,213,214,215
     db 216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231
 CreditSequence: db 1,12,"CREDITOS",0

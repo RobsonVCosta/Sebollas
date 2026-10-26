@@ -334,7 +334,7 @@ MovePlayer:
     jr nz,.leftTest
 .down:
     ld a,(_carY)
-    cp 152
+    cp 160
     jr z,.leftTest
     inc a
     ld (_carY),a
@@ -342,7 +342,7 @@ MovePlayer:
     cp 2
     jr nc,.leftTest
     ld a,(_carY)
-    cp 152
+    cp 160
     jr z,.leftTest
     inc a
     ld (_carY),a
@@ -655,10 +655,10 @@ CheckHits:
     ld a,(_state)
     cp 12
     jr nz,.body
-    ld b,23
-    ld c,31
-    ld d,23
-    ld e,17
+    ld b,21
+    ld c,43
+    ld d,17
+    ld e,25
 .body:
     ld a,(_carX)
     sub (ix+1)
@@ -787,14 +787,12 @@ AppendSprite:
     ld a,d
     cp 8
     jr c,.trioColors
-    ld a,(_state)
-    cp 12
-    jr nz,.colors
     ld a,d
-    sub DUST_PATTERN/4
-    cp 4
+    cp COW_PATTERN/4
+    jr c,.colors
+    cp COW_PATTERN/4+16
     jr nc,.colors
-    ld bc,SmallCowColors-DUST_PATTERN*4
+    ld bc,DonkeyLineColors-COW_PATTERN*4
     jr .colors
 .trioColors:
     ld bc,TrioColors
@@ -914,12 +912,6 @@ BuildSprites:
     add a,DUST_PATTERN/4
     call AppendSprite
 .cows:
-    ld a,(_state)
-    cp 12
-    jr nz,.largeCows
-    call DrawChallengeCows
-    jr .items
-.largeCows:
     ld ix,_cows
     call DrawCow
     ld ix,_cows+8
@@ -1001,8 +993,8 @@ BlankPlay: db "    ",0
 GameOverText: db "GAME OVER",0
 ArrivalText: db "CHEGAMOS!",0
 CheeseLabel: db "QUEIJOS ",0
-GaugeEmpty: db "E",0
-GaugeFull: db "F",0
+GaugeEmpty: db 166,0
+GaugeFull: db 167,0
 NeedleOffsets: db 0,1,2,2,3,4,5,6,6,7
 FuelLabel: db "GAS",0
 ScoreLabel: db "SCORE",0
@@ -1025,8 +1017,10 @@ EnemyCheeseColors: incbin "resources/generated/enemy_cheese_colors.bin"
 CheeseFightPalette: incbin "resources/generated/cheese_fight_palette.bin"
 TrioPatterns: incbin "resources/generated/trio_patterns.bin"
 TrioColors: incbin "resources/generated/trio_colors.bin"
-SmallCowPatterns: incbin "resources/generated/small_cow_patterns.bin"
-SmallCowColors: incbin "resources/generated/small_cow_colors.bin"
+DonkeyPatterns: incbin "resources/generated/donkey_patterns.bin"
+DonkeyLineColors: incbin "resources/generated/donkey_colors.bin"
+GarapaTilePatterns: incbin "resources/generated/garapa_tile_patterns.bin"
+GarapaTileColors: incbin "resources/generated/garapa_tile_colors.bin"
 GameDataEnd:
     ASSERT GameDataEnd <= 0C000h
     defs 0C000h-$,0FFh

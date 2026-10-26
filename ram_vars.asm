@@ -1,5 +1,5 @@
 ; Sebollas: all mutable state is explicitly initialized in C000-C6FF.
-_state          equ 0C000h ; 0 title, 1 road, 2 game over, 3 stage card, 4 boss, 5 ending, 6 credits, 7 bonus, 8/9 ending art, 10 stage intro
+_state          equ 0C000h ; 0 title, 1 road, 2 game over, 3 stage card, 4 boss, 5 ending, 6 credits, 7 bonus, 8/9 ending art, 10 stage intro, 13 story prologue
 _tick           equ 0C001h
 _framePhase     equ 0C002h
 _is60Hz         equ 0C003h
@@ -103,6 +103,11 @@ _cowLaneMax     equ 0C0AEh
 _cowChaseStart2 equ 0C0B0h
 _cowChaseStart3 equ 0C0B2h
 _cowTimePtr     equ 0C0B4h
+_walkFrame      equ 0C0B6h
+_garapaTileAddr equ 0C0B7h ; previous tile actor rectangle, zero before drawing
+_caneTileAddr   equ 0C0B9h
+_secondCheese   equ 0C0BBh ; active, x, y, target x (second boss projectile)
+_introDone      equ 0C0BFh ; prologue fully revealed, waiting before first stage
 _satBuffer      equ 0C100h ; 128 bytes
 _colorBuffer    equ 0C180h ; 512 bytes
 _screenBuffer   equ 0C400h ; 768 bytes

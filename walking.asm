@@ -3,10 +3,17 @@ LoadWalkingArt:
     ld a,(_stage)
     cp 2
     ret nc
+    xor a
+    ld (_walkFrame),a
     ld hl,TrioPatterns
     ld de,SPTPAT
     ld bc,256
+    call LDIRVM
+    ld hl,DonkeyPatterns
+    ld de,SPTPAT+COW_PATTERN*8
+    ld bc,512
     jp LDIRVM
+
 DrawWalkingPlayer:
     ld a,(_carX)
     ld (_playerSprite+1),a
@@ -90,9 +97,6 @@ BeginGarapaMeeting:
     ld (_cows+16),a
     ld (_caneActive),a
     ld (_bossFlash),a
-    ld de,GarapaText
-    ld bc,0308h
-    call PutText
     call BuildSprites
     jp UploadSprites
 MeetingTick:
@@ -122,8 +126,12 @@ BeginCaneChallenge:
     ld (_bossFlash),a
     ld (_bossHP),a
     ld (_bossDirection),a
-    ld a,1
     ld (_driveStarted),a
+    ld (_garapaTileAddr),a
+    ld (_garapaTileAddr+1),a
+    ld (_caneTileAddr),a
+    ld (_caneTileAddr+1),a
+    ld a,1
     ld (_herdLevel),a
     ld a,20
     ld (_throwClock),a
@@ -134,23 +142,26 @@ BeginCaneChallenge:
     ld (_carX),a
     ld a,136
     ld (_carY),a
-    ld a,5
-    ld (_lives),a
     xor a
     ld (_invulnerable),a
     call LoadBossArt
-    call LoadSmallCowArt
+    call LoadGarapaTileArt
     call ClearArena
     call DrawArenaStation
-    ld de,GarapaQuestion
-    ld bc,0306h
-    call PutText
+    call DrawGarapaPhrase
     call DrawHUD
     call BuildBossSprites
     jp UploadSprites
 CaneChallengeTick:
+    call CheckDriveStart
+    ld a,(_driveStarted)
+    or a
+    jr nz,.started
+    call BuildBossSprites
+    jp UploadSprites
+.started:
     ld a,(_caneTotal)
-    cp 100
+    cp 30
     jr c,.playing
     ld hl,(_stageTimer)
     dec hl
@@ -173,7 +184,7 @@ CaneChallengeTick:
     ret nz
     call UpdateFriendlyCane
     ld a,(_caneTotal)
-    cp 100
+    cp 30
     jr nc,.render
     ld a,(_tick)
     and 3
@@ -223,7 +234,7 @@ UpdateFriendlyCane:
     ld a,(_bossX)
     add a,8
     ld (_caneX),a
-    ld a,64
+    ld a,72
     ld (_caneY),a
     ld a,(_carX)
     add a,8
@@ -250,24 +261,20 @@ UpdateFriendlyCane:
     cp 36
     ret nc
     ld a,(_caneTotal)
-    cp 100
+    cp 30
     jr nc,.remove
     inc a
     ld (_caneTotal),a
-    cp 100
-    jr nz,.count
-    ld a,1
-    ld (_caneHundred),a
-    xor a
-    ld (_cheeseCount),a
-    ld hl,50
-    ld (_stageTimer),hl
-    jr .sound
-.count:
+    push af
     ld a,(_cheeseCount)
     add a,1
     daa
     ld (_cheeseCount),a
+    pop af
+    cp 30
+    jr nz,.sound
+    ld hl,50
+    ld (_stageTimer),hl
 .sound:
     call SoundCollect
     call DrawCheeseHUD
@@ -280,15 +287,9 @@ UpdateFriendlyCane:
 
 DrawCaneObjective:
     ld de,CaneGoalLabel
-    ld bc,0113h
+    ld bc,0115h
     call PutText
     ld a,(_caneTotal)
-    cp 100
-    jr c,.belowHundred
-    ld a,'1'
-    ld hl,NAMTBL+32+25
-    jp WRTVRM
-.belowHundred:
     ld b,'0'
 .tens:
     cp 10
@@ -299,13 +300,24 @@ DrawCaneObjective:
 .digits:
     push af
     ld a,b
-    ld hl,NAMTBL+32+26
+    ld hl,NAMTBL+32+27
     call WRTVRM
     pop af
     add a,'0'
-    ld hl,NAMTBL+32+27
+    ld hl,NAMTBL+32+28
     jp WRTVRM
-CaneGoalLabel: db "CANAS 000/100",0
+CaneGoalLabel: db "CANAS 00/30",0
+
+DrawGarapaPhrase:
+    ld a,(_stageTimer)
+    and 128
+    ld de,GarapaQuestion
+    jr z,.show
+    ld de,TakeCaneText
+.show:
+    ld bc,0306h
+    jp PutText
+TakeCaneText: db "Levem cana pra casa",0
 
 ; A single crossing cow avoids overlapping two 32px cows with the wide trio.
 ; Bytes 6/7 mark a chase and its once-only trigger; BIOS time controls expiry.
@@ -425,9 +437,13 @@ MoveWalkingCow:
     jr nz,.chaseMove
     inc (ix+6) ; BIOS time owns expiry even if the game loop runs faster
 .chaseMove:
+    ld a,(_state)
+    cp 12
+    jr z,.chaseStep
     ld a,(_tick)
     and 1
     ret nz
+.chaseStep:
     ld a,(_state)
     cp 12
     ld b,0
@@ -451,7 +467,7 @@ MoveWalkingCow:
     cp 12
     ld b,0
     jr nz,.targetY
-    ld b,16
+    ret ; arena pursuit follows X, retaining its 32px lane
 .targetY:
     ld a,(_carY)
     add a,b
@@ -473,9 +489,13 @@ MoveWalkingCow:
     dec (ix+2)
     ret
 .cross:
+    ld a,(_state)
+    cp 12
+    jr z,.crossStep
     ld a,(_tick)
     and 1
     ret nz
+.crossStep:
     ld a,(ix+3)
     or a
     ld a,(ix+1)
@@ -498,30 +518,6 @@ MoveWalkingCow:
 ; Compact cows occupy separate vertical lanes, keeping the cane visible.
 AppendWalkingCane:
     jp AppendSprite ; lane-separated arena cows leave room for the cane
-
-LoadSmallCowArt:
-    ld hl,SmallCowPatterns
-    ld de,SPTPAT+DUST_PATTERN*8
-    ld bc,128
-    jp LDIRVM
-DrawChallengeCows:
-    ld ix,_cows
-    call .cow
-    ld ix,_cows+8
-    call .cow
-    ld ix,_cows+16
-.cow:
-    ld a,(ix+0)
-    or a
-    ret z
-    ld d,(ix+2)
-    ld e,(ix+1)
-    ld a,(ix+3)
-    add a,a
-    add a,DUST_PATTERN/4
-    call AppendSprite
-    inc a
-    jp AppendSprite
 
 UpdateCaneHerd:
     ld a,1
@@ -559,7 +555,6 @@ UpdateCaneHerd:
 .lane:
     ld (_cowTimePtr),hl
     ld (_cowLaneMin),a
-    add a,16
     ld (_cowLaneMax),a
     ld a,(ix+0)
     or a
@@ -616,3 +611,135 @@ BeginBarArrival:
     call BuildSprites
     jp UploadSprites
 BarArrivalText: db "CHEGAMOS AO BAR!",0
+
+; The tile actors preserve the V9938's 32-sprite/eight-per-line limits with
+; three full 32x32 donkeys. Their patterns are local to the cane arena.
+LoadGarapaTileArt:
+    ld de,186*8
+    ld b,3
+.patterns:
+    push bc
+    push de
+    ld hl,GarapaTilePatterns
+    ld bc,128
+    call LDIRVM
+    pop hl
+    ld de,2048
+    add hl,de
+    ex de,hl
+    pop bc
+    djnz .patterns
+    ld de,02000h+186*8
+    ld b,3
+.colors:
+    push bc
+    push de
+    ld hl,GarapaTileColors
+    ld bc,128
+    call LDIRVM
+    pop hl
+    ld de,2048
+    add hl,de
+    ex de,hl
+    pop bc
+    djnz .colors
+    ret
+
+DrawFriendlyActors:
+    ld hl,(_garapaTileAddr)
+    ld a,h
+    or l
+    call nz,EraseGarapaTiles
+    ld hl,(_caneTileAddr)
+    ld a,h
+    or l
+    call nz,EraseCaneTiles
+    ld a,(_bossX)
+    srl a
+    srl a
+    srl a
+    ld e,a
+    ld d,0
+    ld hl,NAMTBL+5*32
+    add hl,de
+    ld (_garapaTileAddr),hl
+    ex de,hl
+    ld hl,GarapaTileMap
+    ld b,4
+.row:
+    push bc
+    push hl
+    push de
+    ld bc,4
+    call LDIRVM
+    pop hl
+    ld de,32
+    add hl,de
+    ex de,hl
+    pop hl
+    ld bc,4
+    add hl,bc
+    pop bc
+    djnz .row
+    xor a
+    ld (_caneTileAddr),a
+    ld (_caneTileAddr+1),a
+    ld a,(_caneActive)
+    or a
+    ret z
+    ld a,(_caneY)
+    srl a
+    srl a
+    srl a
+    ld l,a
+    ld h,0
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    add hl,hl
+    ld de,NAMTBL
+    add hl,de
+    ld a,(_caneX)
+    add a,4
+    srl a
+    srl a
+    srl a
+    ld e,a
+    ld d,0
+    add hl,de
+    ld (_caneTileAddr),hl
+    push hl
+    ld a,184
+    call WRTVRM
+    pop hl
+    ld de,32
+    add hl,de
+    ld a,185
+    jp WRTVRM
+
+EraseGarapaTiles:
+    ld b,4
+.row:
+    push bc
+    push hl
+    ld bc,4
+    ld a,130
+    call FILVRM
+    pop hl
+    ld de,32
+    add hl,de
+    pop bc
+    djnz .row
+    ret
+EraseCaneTiles:
+    push hl
+    ld a,130
+    call WRTVRM
+    pop hl
+    ld de,32
+    add hl,de
+    ld a,130
+    jp WRTVRM
+GarapaTileMap: db 186,187,188,189,190,191,192,193
+    db 194,195,196,197,198,199,200,201

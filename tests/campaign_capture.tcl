@@ -30,7 +30,7 @@ after time 6 {
     draw_checkpoint {SetupGameVideo ApplyStagePalette BeginBoss}
 }
 after time 7 {
-    foreach {addr val} {0xC065 8 0xC069 1 0xC06A 120 0xC06B 104} {debug write memory $addr $val}
+    foreach {addr val} {0xC065 8 0xC069 1 0xC06A 120 0xC06B 104 0xC0BB 1 0xC0BC 144 0xC0BD 104} {debug write memory $addr $val}
     draw_checkpoint {DrawHUD BuildBossSprites UploadSprites}
 }
 after time 7.6 {screenshot -raw previews/garapa-openmsx-raw.png}

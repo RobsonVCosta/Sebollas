@@ -3,6 +3,10 @@
 ; and resumes its current note once channel C is free again.
 UpdateMusic:
     ld a,(_state)
+    cp 8
+    jr z,.active
+    cp 9
+    jr z,.active
     cp 11
     jr z,.active
     cp 12

@@ -11,7 +11,7 @@ class Assets(unittest.TestCase):
         old=(ROOT/'resources/font-original.bin').read_bytes()
         for i,ch in enumerate(a.META['font_chars']):
             self.assertEqual(a.PAT[ch*8:ch*8+8],old[i*8:i*8+8])
-        self.assertTrue(all(x in a.META["font_chars"]+a.META["extra_font_chars"] or 128<=x<=158 for x in a.WORLD))
+        self.assertTrue(all(x in a.META["font_chars"]+a.META["extra_font_chars"] or x in a.META['scenery_tiles'] for x in a.WORLD))
         self.assertNotEqual(a.PAT[63*8:64*8],bytes(8))
     def test_route_landmarks_and_safe_center(self):
         rows=[a.WORLD[y*32:(y+1)*32] for y in range(160)]
@@ -74,7 +74,7 @@ class Assets(unittest.TestCase):
         # Car and trailing dust cannot share a line: <=3 sprites.
         # The single transparent cheese uses one sprite. Total <=8.
         peak=0
-        for car_y in range(32,145):
+        for car_y in range(32,161):
             for cow_y in range(40,161):
                 for line in range(192):
                     cows=4*sum(y<=line<y+32 for y in (cow_y,cow_y+48) if y<=160)
@@ -94,8 +94,8 @@ class Assets(unittest.TestCase):
             self.assertTrue(opaque(7,7))
             for x,y in ((0,0),(15,0),(0,15),(15,15),(0,8),(15,8)):
                 self.assertFalse(opaque(x,y))
-            for x,y in ((5,4),(10,7),(6,11)):
-                if frame: x,y=15-y,x
+            for x,y in ((5,4),(10,6),(6,9)):
+                if frame: x,y=14-y,x
                 self.assertFalse(opaque(x,y))
     def test_title_bitmap_and_compression(self):
         data=(ROOT/'resources/generated/title.rle').read_bytes()
@@ -144,10 +144,14 @@ class Assets(unittest.TestCase):
         for row in range(160):
             left,right=bounds[row*2:row*2+2]
             self.assertLessEqual(left,right)
+            if 1<=row<=6:
+                self.assertEqual((left,right),(120,120))
+                self.assertTrue(all(a.WORLD[row*32+col] in range(148,154) for col in (15,16)) if row>=2 else a.WORLD[row*32+15]==ord("R"))
+                continue
             self.assertTrue(all(a.WORLD[row*32+col] in (130,131,146,157,159)
                                 for col in range(left//8,(right+15)//8+1)))
         for row in range(139):
-            for y in range(32,145):
+            for y in range(32,161):
                 spans=[bounds[r*2:r*2+2] for r in range(row+y//8-2,row+(y+31)//8-1)]
                 self.assertLessEqual(max(s[0] for s in spans),min(s[1] for s in spans))
     def test_four_stage_routes_and_fixed_cheese_color(self):
@@ -165,8 +169,8 @@ class Assets(unittest.TestCase):
             self.assertEqual(bundle[:5120],world)
         self.assertEqual(sum(t in (130,131) for t in (data/'world0.bin').read_bytes()[20*32:21*32]),14)
         self.assertEqual(sum(t in (130,131) for t in (data/'world1.bin').read_bytes()[20*32:21*32]),10)
-        self.assertEqual(len((data/'small_cow_patterns.bin').read_bytes()),128)
-        self.assertEqual(len((data/'small_cow_colors.bin').read_bytes()),64)
+        self.assertEqual(len((data/'donkey_patterns.bin').read_bytes()),512)
+        self.assertEqual(len((data/'donkey_colors.bin').read_bytes()),256)
         self.assertTrue(any((data/'patterns.bin').read_bytes()[47*8:48*8]))
         self.assertEqual(len((data/'trio_patterns.bin').read_bytes()),256)
         self.assertEqual(len((data/'trio_colors.bin').read_bytes()),128)
